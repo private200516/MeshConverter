@@ -1,0 +1,21 @@
+{
+  "patch_id": "private0516-mesh-bridge-20261007-v1",
+  "upstream_package": "pywebview",
+  "upstream_version": "6.2.1",
+  "kind": "local security source overlay; not an upstream release",
+  "status": "static review only; runtime validation pending",
+  "license": "BSD-3-Clause; original copyright and notices retained",
+  "upstream_baseline": "Copied from SpeedPreview_20261007 vendor; wheel origin remains in BUILD_PROVENANCE.json",
+  "files": [
+    {
+      "path": "webview/util.py",
+      "upstream_sha256": "a652bd05bfb9a7a9521e8ab52f10425161fa6a84077a92ca5dcd255359b836a4",
+      "patched_sha256": "73829dd5ba5c18c25a01a1c727ddf254c67ce07397c329df6f9d53c0cae3be62"
+    },
+    {
+      "path": "webview/platforms/edgechromium.py",
+      "upstream_sha256": "f3f9168ecb39f7447566112fd14c5ec55830eddf02053eafef0d86fac509a3a4",
+      "patched_sha256": "96551b7d64d223faed8430c623d269a33f293545976c0f973f8f9927bc38d862"
+    }
+  ]
+}

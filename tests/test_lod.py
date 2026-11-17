@@ -38,7 +38,9 @@ class LodParsingTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)
-        self.source, self.dest = self.root / 'input.nif', self.root / 'output.nif'
+        source_dir = self.root / 'input'
+        source_dir.mkdir()
+        self.source, self.dest = source_dir / 'input.nif', self.root / 'output' / 'output.nif'
 
     def tearDown(self):
         self.temp.cleanup()
@@ -91,7 +93,7 @@ class LodParsingTests(unittest.TestCase):
             convert_file(self.source, self.dest, direction='4-to-76', collision=False)
         self.assertFalse(self.dest.exists())
         self.assertEqual(before, self.source.read_bytes())
-        self.assertEqual(list(self.root.glob('.mesh-converter-*.tmp')), [])
+        self.assertEqual(list(self.root.rglob('.mesh-converter-*.tmp')), [])
 
     def test_precombined_lod_is_not_silently_flattened(self):
         fixture(self.source, precombined=True)

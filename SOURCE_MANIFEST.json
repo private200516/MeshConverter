@@ -1,5 +1,7 @@
 {
   "schema_version": 1,
+  "revision": "pinterest-motion-20261117",
+  "baseline_manifest_sha256": "f14115b6b3db79f5588222c648c5e8b2b251205e3cd24e4b4644a10581831bf0",
   "files": [
     {
       "relative": ".gitignore",
@@ -17,9 +19,24 @@
       "sha256": "dc499ffc1226f6ca06ef1d61ed0dc70862865adb52476a876a5524da360e6279"
     },
     {
+      "relative": "MOTION_REVISION_20261117.md",
+      "size": 2802,
+      "sha256": "8c52c3a26196d84be002b6b0a842524d8f221fe6456331446fa0edb53838a40c"
+    },
+    {
+      "relative": "MOTION_SPEC_20261117.md",
+      "size": 4933,
+      "sha256": "1b5500117c91355a41c1b8fa84ddd6dd7890dfc2b61bded908e88347a1d47a07"
+    },
+    {
       "relative": "README.md",
-      "size": 6694,
-      "sha256": "be4e381cb63a9f8c59f780b9f52add0eed355ff990d7a7baa9621342afb0c9fc"
+      "size": 7967,
+      "sha256": "b921aa6cf2b63246872f855dd887d34fe6c3e5fa2ae4b0bed0c68f446b2b0a84"
+    },
+    {
+      "relative": "RELEASE_NOTES_20261117.md",
+      "size": 1001,
+      "sha256": "c858df79155d876e09692dedb6ef354e9d7bab4a889bf1549b0de249650590f6"
     },
     {
       "relative": "THIRD_PARTY.md",
@@ -32,14 +49,19 @@
       "sha256": "a9a46306dc675d7b7c99907d77e1c89331754c217c7f7b793fbe2a1701951f03"
     },
     {
+      "relative": "VALIDATION_20261117.md",
+      "size": 2755,
+      "sha256": "95e0c84247022957ff00b229e2f38662587d3cdf2ae3069cba1a066561ab5872"
+    },
+    {
       "relative": "app.ico",
       "size": 13289,
       "sha256": "6bceb6e97049a7dcb6e394254430327becf33de1310fae445a651aa2c6945001"
     },
     {
       "relative": "app.py",
-      "size": 23654,
-      "sha256": "4e4045d94e0ed8aa4afb9bfa6105133895c07428b14dd054a350702c1b56f5f3"
+      "size": 26329,
+      "sha256": "3e00175b0b4c9e9f5dd25a06c06835cf14a217f5423d419585ed5fdf2bb651b2"
     },
     {
       "relative": "batch_nif.py",
@@ -158,8 +180,8 @@
     },
     {
       "relative": "tests/test_lod.py",
-      "size": 4150,
-      "sha256": "37b92ded5f680f8107c4f289c1c6e2a1dc6fe22c5ab1ae3fd147246362d71fd3"
+      "size": 4231,
+      "sha256": "fa1944eba8c1952a1037f0fe0430beb4398cc5ed60aa1e0f3f23acadc925f80d"
     },
     {
       "relative": "tests/test_preserved.py",
@@ -173,18 +195,23 @@
     },
     {
       "relative": "tests/test_scheduling.py",
-      "size": 9679,
-      "sha256": "d595fcf71d716650f67ff3e8cd510c12ec42542ff7a0a7291ec048fe023f43fd"
+      "size": 10283,
+      "sha256": "6404f073e938dc12d523d6d4938d5a9130bc44fd0eb4497b052dead1a5cade71"
     },
     {
       "relative": "tests/test_shader_animation.py",
-      "size": 6534,
-      "sha256": "07f8aab35e2edfbfbe4137c587b289e1e63e0fa1b034ca074e8f1dab992cdbe1"
+      "size": 6599,
+      "sha256": "9199ae7269f34e3c661be794ad376cd8391d3363f75e0a4fc62ef7cd8ae07e37"
     },
     {
       "relative": "tests/test_static.py",
       "size": 6970,
       "sha256": "9f9e91f26b5b804662a564c9908b853616fbb57abc14cb2a3343636b93635813"
+    },
+    {
+      "relative": "tests/test_trusted_ui_runtime.py",
+      "size": 2438,
+      "sha256": "df636239cb3afa286879e54432c4d8d6e9e4055cb3f60c4c35b1d5bb95679115"
     },
     {
       "relative": "tests/test_validate_samples.py",
@@ -208,13 +235,13 @@
     },
     {
       "relative": "trusted_ui.py",
-      "size": 5860,
-      "sha256": "28e2d02dbccbd15cf1522d7de3cd17787dfb393993dabbd72f51b1065fd9a929"
+      "size": 6095,
+      "sha256": "173211d7e541b018a1db03830f2528fb49e25dce5c6e339f26c77326502d7de1"
     },
     {
       "relative": "ui.html",
-      "size": 706009,
-      "sha256": "86c62a6adbefe027e16cc81f889378a29c9e8f723f4d3ba27ff4d0d03fd662c9"
+      "size": 721643,
+      "sha256": "41f4da6680a6a0130f341bf2caa0a0bc871792cd8e2a5c6641d571ef87abb229"
     },
     {
       "relative": "validate_samples.py",
@@ -246,6 +273,5 @@
       "size": 16737,
       "sha256": "73829dd5ba5c18c25a01a1c727ddf254c67ce07397c329df6f9d53c0cae3be62"
     }
-  ],
-  "self_excluded": "SOURCE_MANIFEST.json"
+  ]
 }

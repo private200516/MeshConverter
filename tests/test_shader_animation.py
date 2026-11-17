@@ -32,12 +32,18 @@ def shader_fixture(path, lighting=False, color=False, variable=None, mutate=None
     fixture(path, configure)
 
 
+def conversion_paths(directory):
+    paths = [Path(directory) / name / 'model.nif' for name in ('source', 'fo4', 'fo76')]
+    paths[0].parent.mkdir()
+    return paths
+
+
 class ShaderAnimationTests(unittest.TestCase):
     def test_both_shader_families_roundtrip_semantics_and_keys(self):
         for lighting in (False, True):
             for color in (False, True):
                 with self.subTest(lighting=lighting, color=color), tempfile.TemporaryDirectory() as td:
-                    source, fo4, fo76 = [Path(td)/x for x in ('source.nif','fo4.nif','fo76.nif')]
+                    source, fo4, fo76 = conversion_paths(td)
                     shader_fixture(source, lighting, color)
                     convert_file(source, fo4, collision=False)
                     convert_file(fo4, fo76, direction='4-to-76', collision=False)
@@ -58,12 +64,12 @@ class ShaderAnimationTests(unittest.TestCase):
 
     def test_unknown_variable_rejected_without_published_output(self):
         with tempfile.TemporaryDirectory() as td:
-            src, dst = Path(td)/'source.nif', Path(td)/'target.nif'
+            src, dst, _ = conversion_paths(td)
             shader_fixture(src, variable=99)
             with self.assertRaisesRegex(ValueError, '参数'):
                 convert_file(src, dst, collision=False)
             self.assertFalse(dst.exists())
-            self.assertFalse(list(Path(td).glob('*.tmp')))
+            self.assertFalse(list(Path(td).rglob('*.tmp')))
 
     def test_truncated_controller_invalid_target_and_nonfinite_keys_rejected(self):
         mutations = [lambda w,c,i,d: w.set(c, w.blocks[c][1][:-1]),
@@ -71,7 +77,7 @@ class ShaderAnimationTests(unittest.TestCase):
                      lambda w,c,i,d: w.set(d, w.blocks[d][1][:12]+P('f',math.nan)+w.blocks[d][1][16:])]
         for mutate in mutations:
             with tempfile.TemporaryDirectory() as td:
-                src, dst=Path(td)/'source.nif',Path(td)/'target.nif'
+                src, dst, _ = conversion_paths(td)
                 shader_fixture(src, mutate=mutate)
                 with self.assertRaises(ValueError):
                     convert_file(src, dst, collision=False)
@@ -92,7 +98,7 @@ class ShaderAnimationTests(unittest.TestCase):
     def test_sequence_controller_identifier_tracks_remapped_parameter(self):
         for identifier in ('13','8'):
             with tempfile.TemporaryDirectory() as td:
-                source, fo4, fo76=[Path(td)/x for x in ('source.nif','fo4.nif','fo76.nif')]
+                source, fo4, fo76=conversion_paths(td)
                 def managed(w,c,i,d):
                     names=[w.sid(x) for x in ('Triangle','BSEffectShaderProperty','BSEffectShaderPropertyFloatController',identifier,'')]
                     sequence=P('iIIiiB5ifiI3fiiH',w.sid('Idle'),1,1,i,c,0,*names,1,-1,0,1,0,2,-1,-1,0)

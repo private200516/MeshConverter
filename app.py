@@ -287,7 +287,9 @@ def main():
     from trusted_ui import TrustedUiServer, attach_bridge
     api=Api();base=Path(getattr(sys,'_MEIPASS',Path(__file__).parent)).resolve()
     smoke='--smoke-test' in sys.argv
-    with TrustedUiServer(base/'ui.html') as ui_server:
+    # Hidden tests own an independent socket/profile, so they never close or reuse
+    # a normal instance's listener. Production retains its stable preferences origin.
+    with TrustedUiServer(base/'ui.html',port=0 if smoke else 42001) as ui_server:
         # Use only the already-bound in-memory single-page server. A conflict raises
         # here, before WebView can load a page belonging to another local process.
         webview.settings['ALLOW_FILE_URLS']=False
@@ -320,17 +322,31 @@ def main():
                 threading.Thread(target=lambda:window.evaluate_js('window.nifShiftExit && window.nifShiftExit()'),daemon=True).start()
                 return False
         window.events.closing+=on_closing
+        native_closed=threading.Event();smoke_finished=threading.Event();smoke_result={}
+        if smoke:window.events.closed+=native_closed.set
         def test_ui():
             import traceback
             root=Path(sys.argv[sys.argv.index('--smoke-test')+1]).resolve();root.mkdir(parents=True,exist_ok=True)
-            result={}
+            result={};interrupt_startup='--startup-close' in sys.argv
             try:
                 for _ in range(100):
                     time.sleep(.1)
-                    if window.evaluate_js("Boolean(window.pywebview && window.pywebview.api && document.getElementById('ns-action') && !document.getElementById('ns-action').disabled)"):break
+                    if window.evaluate_js("Boolean(window.pywebview && window.pywebview.api && document.getElementById('ns-action') && typeof window.nifShiftExit==='function')"):break
                 else:raise TimeoutError('Desktop bridge not ready')
+                result={'passed':False,'engine':window.evaluate_js('navigator.userAgent'),'startup_interrupted':interrupt_startup}
+                if interrupt_startup:
+                    result['boot_complete_before_close']=window.evaluate_js("document.getElementById('nif-shift').dataset.boot==='complete'")
+                    assert not result['boot_complete_before_close'],'Startup-close test missed the startup animation'
+                    started=time.monotonic();window.evaluate_js('window.nifShiftExit()')
+                    if not native_closed.wait(10):raise TimeoutError('Closing during startup did not close the native window')
+                    result.update(passed=True,shutdown={'native_closed':True,'elapsed_seconds':round(time.monotonic()-started,3)})
+                    assert result['shutdown']['elapsed_seconds']>=.45,'Shutdown skipped its animation'
+                    return
                 assert api.configure(str(root/'input'),str(root/'output')).get('ok')
-                time.sleep(3)
+                for _ in range(160):
+                    if window.evaluate_js("document.getElementById('nif-shift').dataset.boot==='complete'"):break
+                    time.sleep(.05)
+                else:raise TimeoutError('Startup cover did not release the workspace')
                 window.evaluate_js("document.getElementById('ns-dialog-close').click()")
                 for expected in ('ready','done'):
                     window.evaluate_js("window.dispatchEvent(new Event('focus'))")
@@ -354,16 +370,33 @@ def main():
                     if window.evaluate_js("parseInt(document.getElementById('ns-log-total').textContent,10)>0" if deferred else "document.querySelectorAll('.ns-log-line').length>0"):break
                     time.sleep(.1)
                 else:raise TimeoutError('Native log state did not update')
-                result={'passed':True,'engine':window.evaluate_js('navigator.userAgent'),'button':window.evaluate_js("document.getElementById('ns-action').innerText"),'log_dom_deferred_while_hidden':deferred,'state':api.snapshot()}
-            except Exception:result={'passed':False,'error':traceback.format_exc()}
+                result.update(button=window.evaluate_js("document.getElementById('ns-action').innerText"),log_dom_deferred_while_hidden=deferred,state=api.snapshot())
+                started=time.monotonic();window.evaluate_js('window.nifShiftExit()')
+                if not native_closed.wait(10):raise TimeoutError('Animated shutdown did not close the native window')
+                result.update(passed=True,shutdown={'native_closed':True,'elapsed_seconds':round(time.monotonic()-started,3)})
+                assert result['shutdown']['elapsed_seconds']>=.45,'Shutdown skipped its animation'
+            except Exception:result.update(passed=False,error=traceback.format_exc())
             finally:
-                (root/'ui-test.json').write_text(json.dumps(result,ensure_ascii=False,indent=2),encoding='utf8');api.cancel()
-                while api.busy:time.sleep(.1)
-                api.exit_allowed=True;window.destroy()
+                try:
+                    if not native_closed.is_set():
+                        if api.busy:api.cancel()
+                        deadline=time.monotonic()+10
+                        while api.busy and time.monotonic()<deadline:time.sleep(.1)
+                        api.exit_allowed=True
+                        try:window.destroy()
+                        except Exception:pass
+                    smoke_result.update(result)
+                    (root/'ui-test.json').write_text(json.dumps(result,ensure_ascii=False,indent=2),encoding='utf8')
+                finally:smoke_finished.set()
         storage=(Path(sys.argv[sys.argv.index('--smoke-test')+1]).resolve()/'webview-secure1'
                  if smoke else Path(os.environ.get('LOCALAPPDATA',Path.home()))/'private0516'/'MeshConverter'/'webview-secure1')
         webview.start(test_ui if smoke else None,gui='edgechromium',debug=False,
                       private_mode=False,storage_path=str(storage))
+        if smoke:
+            # The smoke callback writes after the native close event. Give it time
+            # to finish before the UI thread exits, and return a real failure code.
+            if not smoke_finished.wait(12):raise RuntimeError('Native UI smoke did not finish')
+            if not smoke_result.get('passed'):raise RuntimeError(smoke_result.get('error','Native UI smoke failed'))
         if renderer_errors:
             # Outside the event dispatcher, this error reaches the launcher.
             raise RuntimeError(renderer_errors[0])

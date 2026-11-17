@@ -66,11 +66,11 @@ class TrustedUiServer:
     webview-secure1 profile deliberately does not reuse old web content/storage.
     Each launch serves just one nonce path; no API, filesystem handler or CORS.
     """
-    def __init__(self, ui_path):
+    def __init__(self, ui_path, *, port=42001):
         page = Path(ui_path).read_bytes()
-        host = '127.0.0.1:42001'
+        if isinstance(port, bool) or not isinstance(port, int) or not 0 <= port <= 65535:
+            raise ValueError('The local UI port must be an integer from 0 to 65535.')
         route = '/' + secrets.token_hex(24) + '/ui.html'
-        self.url = 'http://' + host + route
 
         class Handler(BaseHTTPRequestHandler):
             protocol_version = 'HTTP/1.0'
@@ -110,14 +110,16 @@ class TrustedUiServer:
                 pass
 
         try:
-            self._server = _ExclusiveHTTPServer(('127.0.0.1', 42001), Handler)
+            self._server = _ExclusiveHTTPServer(('127.0.0.1', port), Handler)
         except OSError as exc:
             raise RuntimeError(
-                'Mesh Converter cannot reserve its local UI port (127.0.0.1:42001). '
+                'Mesh Converter cannot reserve its local UI port (127.0.0.1:' + str(port) + '). '
                 'Close another instance or the process using that port, then retry. '
                 'No existing listener/page was used. '
                 '本地界面端口被占用，程序已停止启动；请关闭另一个实例或占用端口的进程。'
             ) from exc
+        host = '127.0.0.1:' + str(self._server.server_address[1])
+        self.url = 'http://' + host + route
         self._thread = threading.Thread(target=self._server.serve_forever,
                                         name='MeshConverter trusted UI', daemon=True)
 

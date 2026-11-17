@@ -23,6 +23,8 @@ class SchedulingTests(unittest.TestCase):
             root=Path(directory);source=root/'in';source.mkdir();dest=root/'out'
             api=Api();api.configure(source,dest)
             rows=[dict(path=str(source/f'{i}.nif'),name=f'{i}.nif',size=1024*1024,status='可转换',supported=True,detail='') for i in range(12)]
+            for row in rows:
+                Path(row['path']).write_bytes(b'synthetic source for mocked conversion')
             api._update(rows=rows);api._parallelism=lambda rows:2
             lock=threading.Lock();active=0;peak=0;order=[]
             def fake(src,target,collision,dry):
@@ -77,6 +79,7 @@ class SchedulingTests(unittest.TestCase):
             root=Path(directory);source=root/'in';source.mkdir();dest=root/'out';dest.mkdir()
             api=Api();api.configure(source,dest)
             row=dict(path=str(source/'a.nif'),name='a.nif',size=1,status='可转换',supported=True,detail='')
+            Path(row['path']).write_bytes(b'synthetic source for mocked conversion')
             (dest/'a.nif').write_bytes(b'original')
             with patch.object(api,'_call') as call:api._process_row(row,'convert',False,dest)
             call.assert_not_called();self.assertEqual((dest/'a.nif').read_bytes(),b'original')
@@ -84,7 +87,7 @@ class SchedulingTests(unittest.TestCase):
 
     def test_parse_and_hash_use_one_source_read_per_conversion(self):
         with tempfile.TemporaryDirectory() as directory:
-            root=Path(directory);source=root/'in.nif';out=root/'out.nif'
+            root=Path(directory);(root/'input').mkdir();source=root/'input/in.nif';out=root/'output/out.nif'
             writer=Writer(bs=155);writer.add('NiNode',writer.av('Root',IDENTITY)+P('I',0));writer.save(source)
             reads=[];original=Path.read_bytes
             def tracked(path):
@@ -102,17 +105,17 @@ class SchedulingTests(unittest.TestCase):
 class WorkerIsolationTests(unittest.TestCase):
     def test_invalid_file_does_not_poison_next_job_in_same_process(self):
         with tempfile.TemporaryDirectory() as directory:
-            root=Path(directory);bad=root/'bad.nif';bad.write_bytes(b'bad header')
-            good=root/'good.nif';writer=Writer(bs=155);writer.add('NiNode',writer.av('Root',IDENTITY)+P('I',0));writer.save(good)
+            root=Path(directory);source=root/'input';source.mkdir();bad=source/'bad.nif';bad.write_bytes(b'bad header')
+            good=source/'good.nif';writer=Writer(bs=155);writer.add('NiNode',writer.av('Root',IDENTITY)+P('I',0));writer.save(good)
             instance=IsolatedWorker();stop=threading.Event()
             try:
-                request=dict(src=str(bad),dest=str(root/'out.nif'),dry_run=True,collision=False)
+                request=dict(src=str(bad),dest=str(root/'output/out.nif'),dry_run=True,collision=False)
                 bad_result=instance.call(request,stop);pid=instance.process.pid
                 self.assertFalse(bad_result['ok'])
                 request['src']=str(good)
                 result=instance.call(request,stop)
                 self.assertTrue(result['ok']);self.assertEqual(instance.process.pid,pid)
-                self.assertFalse((root/'out.nif').exists())
+                self.assertFalse((root/'output/out.nif').exists())
             finally:instance.close()
             self.assertIsNone(instance.process);self.assertIsNone(instance.connection)
 
@@ -129,7 +132,11 @@ class WorkerIsolationTests(unittest.TestCase):
             self.assertIsNone(worker.process);self.assertIsNone(worker.connection)
 
     def test_windows_runtime_prune_preserves_metadata_and_licenses(self):
-        from build_portable import prune_windows_runtime
+        import importlib.util
+        builder_path=Path(__file__).resolve().parents[1]/'tools/legacy/build_portable.py'
+        spec=importlib.util.spec_from_file_location('mesh_legacy_build_portable',builder_path)
+        builder=importlib.util.module_from_spec(spec);spec.loader.exec_module(builder)
+        prune_windows_runtime=builder.prune_windows_runtime
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory)
             files=['vendor/webview/platforms/cocoa.py','vendor/webview/platforms/edgechromium.py',

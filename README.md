@@ -1,12 +1,16 @@
 # MeshConverter · ALPHA 1.0
 
+> **最新动效版本 / Latest motion revision:** 2026-11-17 Pinterest motion. 启动 1400ms、关闭 650ms；323 项回归通过。详见 [MOTION_REVISION_20261117.md](MOTION_REVISION_20261117.md)。
+
+> 历史记录：较早的 runtime-motion 更新共通过 315 项测试，保留在 [VALIDATION_20261117.md](VALIDATION_20261117.md) 供追溯；当前版本采用上方的 323 项验证。下文“本次整理／未运行”等陈述属于 10 月源码发布阶段的历史说明。
+
 在本地转换受支持的 Fallout 76 BS155 ↔ Fallout 4 BS130 NIF 结构。项目代码采用 GPL-3.0；作者为 private0516。原项目使用 GPT-6 Astra 辅助开发，代码与界面包含 AI 生成内容。本项目不代表 Bethesda、OpenAI 或依赖项目背书。
 
-这是完整的源代码开发包，包含原包的 `ui.html`、字体、图标及救护车线框界面资源；这些资源的公开发布已获用户明确授权，内容按核对后的原始字节保留。包内没有预编译产品 EXE、Python runtime 或安装后的 vendor 依赖，也不提供用于转换的游戏样本或游戏资源库。第三方组件仍适用各自许可。
+这是完整的源代码开发包，包含原包的 `ui.html`、字体、图标及救护车线框界面资源；这些资源的公开发布已获用户明确授权；字体、图标及线框资源保留经核对的原始字节，`ui.html` 已纳入本轮动效更新。包内没有预编译产品 EXE、Python runtime 或安装后的 vendor 依赖，也不提供用于转换的游戏样本或游戏资源库。第三方组件仍适用各自许可。
 
 ## Windows 下载
 
-[MeshConverter.zip](downloads/MeshConverter.zip) · [SHA256 校验文件](downloads/MeshConverter.zip.sha256)
+[MeshConverter.zip](https://github.com/private200516/MeshConverter/raw/refs/heads/main/downloads/MeshConverter.zip) · [SHA256 校验文件](downloads/MeshConverter.zip.sha256)
 
 下载后先核对 ZIP 的 SHA256，再完整解压，并保留包内配套目录。Windows 分发包与源码开发包分别审核，文件布局以下载包内说明为准；下文的源码环境说明不描述 ZIP 内的组件。
 
@@ -70,3 +74,9 @@ py -3.12 -m venv .venv
 项目代码见 [LICENSE](LICENSE)。PyNifly 的 Havok 代码及 pywebview 补丁保留各自原始版权和许可，见 [THIRD_PARTY.md](THIRD_PARTY.md)、`vendor_patch/LICENSE.pywebview.txt` 与 [UPSTREAM_DEPENDENCIES.md](UPSTREAM_DEPENDENCIES.md)。资源随包发布的范围已获用户确认；项目 GPL 不重新许可第三方字体、图标、依赖或其他人的游戏资产，也不构成对所有第三方许可的统一认证。
 
 English: Complete source-development package with the original authorized UI HTML, fonts, icon and ambulance wireframe. Install pinned dependencies, verify/apply the two local pywebview overlays in an isolated venv, then run `python app.py` on Windows with .NET Framework and WebView2. Product EXEs and packaged runtimes are not included. Historical combined checks are not a fresh pass of this repository; game, security, cancellation-latency and release acceptance remain unverified.
+
+## 完整动画设置更新 / Full-motion update — 2026-11-17
+
+Mesh 已移除“减少动态效果”设置，清除旧的该项偏好，并完整播放程序动画。系统减少动画偏好不再锁定本程序的动画；后台、失焦及关闭预览旋转时的暂停机制保留。
+
+The reduced-motion option has been removed from Mesh Converter. The old preference is cleared and full application animations remain enabled even when the operating system requests reduced motion. Background rendering pauses and the separate model-rotation setting continue to work.

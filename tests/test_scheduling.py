@@ -89,10 +89,11 @@ class SchedulingTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);(root/'input').mkdir();source=root/'input/in.nif';out=root/'output/out.nif'
             writer=Writer(bs=155);writer.add('NiNode',writer.av('Root',IDENTITY)+P('I',0));writer.save(source)
-            reads=[];original=Path.read_bytes
+            from inspect_nif import read_nif_bytes
+            reads=[];original=read_nif_bytes
             def tracked(path):
                 reads.append(path.resolve());return original(path)
-            with patch.object(Path,'read_bytes',tracked):result=convert_file(source,out)
+            with patch('inspect_nif.read_nif_bytes',tracked):result=convert_file(source,out)
             self.assertEqual(reads.count(source.resolve()),1)
             self.assertEqual(result['source_sha256'],hashlib.sha256(source.read_bytes()).hexdigest())
             self.assertIn(out.parent,reads[-1].parents)

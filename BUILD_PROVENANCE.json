@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "product": "MeshConverter",
+  "public_version": "ALPHA 1.0",
+  "revision": "security-hardening-20261117",
+  "author": "private0516",
+  "project_license": "GPL-3.0",
+  "development_disclosure": "GPT-6 Astra; AI-generated code and UI",
+  "python": {
+    "version": "3.12.14",
+    "origin": "Retained restored local Codex runtime; not a new PSF Windows release",
+    "executable_sha256": "4278cf2a296f31737cae77cafeeb3dc71683094cf3b8fd6f3f02c968687e771c",
+    "dll_sha256": "aab06496e7395a644318692972c30983237268f53469c290886da5fb59264cef",
+    "upgraded_in_this_revision": false
+  },
+  "launcher": {
+    "source": "Launcher.cs",
+    "source_sha256": "2153ca551524f2e70cd4baaa06a8e8cb9e4846e36d69e5ae6f50599188fdd837",
+    "manifest_sha256": "896cc4ccff58a18e312d545ee9b2bb4a3da09cb5c0dfc96d5a1376628f55e26b",
+    "exe_sha256": "15e4d7792f782675e7ba6f5820bb8f58a50e9e0453ea2610cde8b6ebaf1743e3",
+    "compiler": "Windows .NET Framework v4 x64 C# compiler",
+    "compiler_sha256": "eca02e6b15cde93009a59a3d129d5a77fb5008f2e1cf62cf573b6737c747ecc3",
+    "build_script": "tools/build_launcher.ps1",
+    "architecture": "x64",
+    "requested_execution_level": "asInvoker",
+    "authenticode": "NotSigned",
+    "reproducible_binary_claim": false
+  },
+  "python_package_versions": {},
+  "security_validation": "SECURITY_VALIDATION.json",
+  "limits": "SECURITY.md",
+  "automated_runtime_downloads": false,
+  "pywebview_overlay": {
+    "patch_id": "private0516-mesh-bridge-20261007-v1",
+    "upstream_package": "pywebview",
+    "upstream_version": "6.2.1",
+    "kind": "local security source overlay; not an upstream release",
+    "status": "static review only; runtime validation pending",
+    "license": "BSD-3-Clause; original copyright and notices retained",
+    "upstream_baseline": "Copied from SpeedPreview_20261007 vendor; wheel origin remains in BUILD_PROVENANCE.json",
+    "files": [
+      {
+        "path": "webview/util.py",
+        "upstream_sha256": "a652bd05bfb9a7a9521e8ab52f10425161fa6a84077a92ca5dcd255359b836a4",
+        "patched_sha256": "73829dd5ba5c18c25a01a1c727ddf254c67ce07397c329df6f9d53c0cae3be62"
+      },
+      {
+        "path": "webview/platforms/edgechromium.py",
+        "upstream_sha256": "f3f9168ecb39f7447566112fd14c5ec55830eddf02053eafef0d86fac509a3a4",
+        "patched_sha256": "96551b7d64d223faed8430c623d269a33f293545976c0f973f8f9927bc38d862"
+      }
+    ]
+  }
+}

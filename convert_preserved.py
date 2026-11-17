@@ -238,7 +238,9 @@ def convert(src,dest,collision=False,dry_run=False,reference_root=None,_nif=None
    if True in colored:flags2|=1<<5
    struct.pack_into('<I',sh,16,flags);struct.pack_into('<I',sh,20,flags2);w.set(i,bytes(sh))
   elif typ=='BSShaderTextureSet':
-   r=Reader(b);tx=[r.s() for _ in range(r.u())]
+   r=Reader(b);count=r.u()
+   if count!=15:raise ValueError('未验证的 FO76 贴图引用布局')
+   tx=[r.s() for _ in range(count)]
    if len(tx)!=15 or r.p!=len(b):raise ValueError('未验证的 FO76 贴图引用布局')
    w.set(i,P('I',9)+b''.join(sized(t) for t in tx[:9]))
   elif typ=='BSEffectShaderProperty':
@@ -253,7 +255,7 @@ def convert(src,dest,collision=False,dry_run=False,reference_root=None,_nif=None
  if not shapes:raise ValueError('无可转换网格')
  info=dict(shapes=len(shapes),vertices=sum(d['vertices'] for _,d in shapes),triangles=sum(d['triangles'] for _,d in shapes),bones=bones,route='preserved',collision_rebuilt=None,notes=notes,skeleton_reference=reference,partitioned_shapes=sum('segments' in d for _,d in shapes),unassigned_partition_triangles=unassigned,skin_weights_validated=bool(skins))
  if dry_run:return info
- w.save(dest);out=Nif(dest)
+ w.save(dest,exclusive=True);out=Nif(dest)
  if out.bs!=130:raise ValueError('目标版本校验失败')
  for i,d in shapes:
   od=shape(out,i)

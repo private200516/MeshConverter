@@ -267,7 +267,7 @@ def convert(src, dest, collision=True, dry_run=False, reference_root=None, _nif=
                 geometry_bytes_preserved=True, warnings=warnings)
     if dry_run:
         return info
-    w.save(dest)
+    w.save(dest, exclusive=True)
     out = Nif(dest)
     if out.bs != 155 or out.roots != n.roots:
         raise ValueError('FO76 目标版本或根节点回读校验失败')

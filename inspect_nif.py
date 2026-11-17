@@ -2,17 +2,56 @@
 import json
 import hashlib
 import math
+import os
+import stat
 import struct
 import sys
 from pathlib import Path
 
+# Conversion limits deliberately match the bounded inventory's metadata policy.
+# They are resource limits, not claims that arbitrary NIF payloads are safe.
+MAX_NIF_BYTES = 512 * 1024 * 1024
+MAX_HEADER_BYTES = 64 * 1024 * 1024
+MAX_TABLE_ITEMS = 1_000_000
+MAX_BLOCK_TYPES = 4096
+MAX_STRING_BYTES = 1024 * 1024
+
+
+def read_nif_bytes(path):
+    """Read at most the file budget from one regular, unchanged open file.
+
+    A path stat followed by read_bytes() allows a growing/replaced file to evade
+    its size check. A bounded read still applies when the open file grows.
+    Ancestor path races require handle-relative filesystem operations; this is
+    not a filesystem sandbox.
+    """
+    with Path(path).open('rb') as stream:
+        before = os.fstat(stream.fileno())
+        if not stat.S_ISREG(before.st_mode):
+            raise ValueError('NIF input must be a regular file')
+        if before.st_size > MAX_NIF_BYTES:
+            raise ValueError('NIF exceeds the 512 MiB per-file conversion limit')
+        raw = stream.read(min(before.st_size, MAX_NIF_BYTES) + 1)
+        if len(raw) > MAX_NIF_BYTES:
+            raise ValueError('NIF exceeds the 512 MiB per-file conversion limit')
+        after = os.fstat(stream.fileno())
+        if (len(raw) != before.st_size or
+                (before.st_size, before.st_mtime_ns, before.st_ctime_ns) !=
+                (after.st_size, after.st_mtime_ns, after.st_ctime_ns)):
+            raise ValueError('NIF input changed while it was being read')
+        return raw
+
+
 class Reader:
-    def __init__(self, b):
+    def __init__(self, b, limit=None):
         self.b = b
         self.p = 0
+        self.limit = limit
     def read(self, n):
         if n < 0 or n > len(self.b) - self.p:
             raise ValueError(f'Truncated data at {self.p}: requested {n} bytes')
+        if self.limit is not None and self.p + n > self.limit:
+            raise ValueError('NIF header exceeds the 64 MiB safety limit')
         value = self.b[self.p:self.p+n]
         self.p += n
         return value
@@ -21,21 +60,29 @@ class Reader:
     def u(self): return self.get('I')[0]
     def i(self): return self.get('i')[0]
     def array(self, fmt, count):
+        if not 0 <= count <= MAX_TABLE_ITEMS:
+            raise ValueError('Array count exceeds the 1,000,000 item safety limit')
         if count < 0 or count > (len(self.b)-self.p)//struct.calcsize('<'+fmt):
             raise ValueError('Array count exceeds remaining data')
-        return self.get(fmt*count)
-    def s(self):
-        return self.read(self.u()).decode('utf-8', errors='surrogateescape').rstrip('\0')
+        # All current callers use scalar formats. A repeat count avoids creating
+        # and compiling a format character for every untrusted array entry.
+        if len(fmt) == 1:
+            return self.get(str(count)+fmt)
+        data = self.read(struct.calcsize('<'+fmt)*count)
+        return tuple(value for item in struct.iter_unpack('<'+fmt, data) for value in item)
+    def s(self, limit=MAX_STRING_BYTES):
+        length = self.u()
+        if length > limit:
+            raise ValueError('NIF string exceeds its safety limit')
+        return self.read(length).decode('utf-8', errors='surrogateescape').rstrip('\0')
     def exp(self): return self.read(self.get('B')[0])
 
 class Nif:
     def __init__(self, path):
         self.path = Path(path)
-        if self.path.stat().st_size > 512*1024*1024:
-            raise ValueError('NIF exceeds the 512 MiB per-file conversion limit')
-        raw = self.path.read_bytes()
+        raw = read_nif_bytes(self.path)
         self.source_sha256 = hashlib.sha256(raw).hexdigest()
-        r = Reader(raw)
+        r = Reader(raw, limit=MAX_HEADER_BYTES)
         newline = r.b.find(b'\n', 0, 256)
         if newline < 0 or not r.b.startswith(b'Gamebryo File Format, Version 20.2.0.7'):
             raise ValueError('Expected a Gamebryo 20.2.0.7 NIF header')
@@ -46,7 +93,7 @@ class Nif:
         self.bs = r.u()
         if self.bs < 103:
             raise ValueError(f'Unsupported Bethesda stream version {self.bs}')
-        if self.count == 0 or self.count > len(r.b)//6:
+        if self.count == 0 or self.count > MAX_TABLE_ITEMS or self.count > len(r.b)//6:
             raise ValueError('Invalid block count')
         self.author = r.exp()
         if self.bs>130: self.unk = r.u()
@@ -54,18 +101,21 @@ class Nif:
         self.export = r.exp()
         self.maxpath = r.exp()
         type_count = r.get('H')[0]
-        if not type_count or type_count>(len(r.b)-r.p)//4:
+        if not type_count or type_count>MAX_BLOCK_TYPES or type_count>(len(r.b)-r.p)//4:
             raise ValueError('Invalid block type count')
-        self.types = [r.s() for _ in range(type_count)]
+        self.types = [r.s(limit=4096) for _ in range(type_count)]
         self.indices = r.array('H',self.count)
         if any(index>=len(self.types) for index in self.indices):
             raise ValueError('Invalid block type index')
         self.sizes = r.array('I',self.count)
         string_count = r.u()
         self.maxlen = r.u()
-        if string_count>(len(r.b)-r.p)//4: raise ValueError('Invalid string count')
+        if (string_count>MAX_TABLE_ITEMS or self.maxlen>MAX_STRING_BYTES
+                or string_count>(len(r.b)-r.p)//4):
+            raise ValueError('Invalid or excessive NIF string table')
         self.strings = [r.s() for _ in range(string_count)]
         self.groups = list(r.array('I',r.u()))
+        r.limit = None  # Payload bytes have the separate per-file budget.
         if sum(self.sizes)>len(r.b)-r.p-4:
             raise ValueError('Block sizes exceed available payload')
         self.blocks = [r.read(n) for n in self.sizes]

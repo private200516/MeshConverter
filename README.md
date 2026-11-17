@@ -1,8 +1,10 @@
 # MeshConverter · ALPHA 1.0
 
-> **最新动效版本 / Latest motion revision:** 2026-11-17 Pinterest motion. 启动 1400ms、关闭 650ms；323 项回归通过。详见 [MOTION_REVISION_20261117.md](MOTION_REVISION_20261117.md)。
+> **当前安全修订 / Current security revision:** `security-hardening-20261117` · ALPHA 1.0。399 项回归通过；见 [安全更新](SECURITY_REVISION_20261117.md)、[安全边界](SECURITY.md) 和 [构建记录](BUILD_PROVENANCE.json)。
 
-> 历史记录：较早的 runtime-motion 更新共通过 315 项测试，保留在 [VALIDATION_20261117.md](VALIDATION_20261117.md) 供追溯；当前版本采用上方的 323 项验证。下文“本次整理／未运行”等陈述属于 10 月源码发布阶段的历史说明。
+> **历史动效验证 / Historical motion validation:** 2026-11-17 Pinterest motion. 启动 1400ms、关闭 650ms；323 项回归通过。详见 [MOTION_REVISION_20261117.md](MOTION_REVISION_20261117.md)。
+
+> 历史记录：较早的 runtime-motion 更新共通过 315 项测试，保留在 [VALIDATION_20261117.md](VALIDATION_20261117.md) 供追溯；该动效阶段采用上方的 323 项验证；当前安全修订结果以上方链接为准。下文“本次整理／未运行”等陈述属于 10 月源码发布阶段的历史说明。
 
 在本地转换受支持的 Fallout 76 BS155 ↔ Fallout 4 BS130 NIF 结构。项目代码采用 GPL-3.0；作者为 private0516。原项目使用 GPT-6 Astra 辅助开发，代码与界面包含 AI 生成内容。本项目不代表 Bethesda、OpenAI 或依赖项目背书。
 

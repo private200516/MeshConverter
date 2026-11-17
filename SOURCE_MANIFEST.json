@@ -1,12 +1,21 @@
 {
   "schema_version": 1,
-  "revision": "pinterest-motion-20261117",
-  "baseline_manifest_sha256": "f14115b6b3db79f5588222c648c5e8b2b251205e3cd24e4b4644a10581831bf0",
+  "revision": "security-hardening-20261117",
   "files": [
     {
       "relative": ".gitignore",
       "size": 326,
       "sha256": "16e45d285d178e800eabaf8cc98a5ed27f4b5d1584a4a346b63253b5c22a24c9"
+    },
+    {
+      "relative": "BUILDING.md",
+      "size": 1077,
+      "sha256": "2bb6618a808500132d56520e1d78c743ddd366f62e8a9730b8421d0dcb6367db"
+    },
+    {
+      "relative": "BUILD_PROVENANCE.json",
+      "size": 2474,
+      "sha256": "ea38c4a495bde7bfe12b04f6f47bbacc0da57d216cd46f227f6d5496a669672a"
     },
     {
       "relative": "LICENSE",
@@ -15,8 +24,8 @@
     },
     {
       "relative": "Launcher.cs",
-      "size": 6478,
-      "sha256": "dc499ffc1226f6ca06ef1d61ed0dc70862865adb52476a876a5524da360e6279"
+      "size": 15722,
+      "sha256": "2153ca551524f2e70cd4baaa06a8e8cb9e4846e36d69e5ae6f50599188fdd837"
     },
     {
       "relative": "MOTION_REVISION_20261117.md",
@@ -30,13 +39,28 @@
     },
     {
       "relative": "README.md",
-      "size": 7967,
-      "sha256": "b921aa6cf2b63246872f855dd887d34fe6c3e5fa2ae4b0bed0c68f446b2b0a84"
+      "size": 8273,
+      "sha256": "3550eea3af51bb5f87cbbc51da2af1ca3708079bdc6a8c99d9732252182b18d2"
     },
     {
       "relative": "RELEASE_NOTES_20261117.md",
       "size": 1001,
       "sha256": "c858df79155d876e09692dedb6ef354e9d7bab4a889bf1549b0de249650590f6"
+    },
+    {
+      "relative": "SECURITY.md",
+      "size": 5307,
+      "sha256": "de612d6fe9ba31b502e93684d754a1492dc12e8f1548fadd2ec236b88547c55e"
+    },
+    {
+      "relative": "SECURITY_REVISION_20261117.md",
+      "size": 3329,
+      "sha256": "94c9266b48b5918b96ce723e845284095a5f877894b4db90b660dd2e3e4a12bb"
+    },
+    {
+      "relative": "SECURITY_VALIDATION.json",
+      "size": 1109,
+      "sha256": "0375211eed611348e1eae7d70a1193f094b0f0e5ec814fa1f93746e56efb6b3c"
     },
     {
       "relative": "THIRD_PARTY.md",
@@ -60,43 +84,43 @@
     },
     {
       "relative": "app.py",
-      "size": 26329,
-      "sha256": "3e00175b0b4c9e9f5dd25a06c06835cf14a217f5423d419585ed5fdf2bb651b2"
+      "size": 27207,
+      "sha256": "9f2cd8450e1cc8522d62b98bbf084ab1ffd6db43d3bda6287a0602daee093886"
     },
     {
       "relative": "batch_nif.py",
-      "size": 3486,
-      "sha256": "7e2ee8af061642fe9bd4cf2d16d172668e2cdcf3359e5ccf232cd5c941e56ec2"
+      "size": 4014,
+      "sha256": "c22e9a543824629d09a8c92dcb63856ce2157b943e8c81a2732a8d2202945d41"
     },
     {
       "relative": "convert_animated.py",
-      "size": 15833,
-      "sha256": "4426455c67de54cbf2f045fef16adddfae8a27da0051aa1eb91bfd2d756058aa"
+      "size": 15994,
+      "sha256": "9d317798053eb813c8a55fc536c877d332eb3c0bd77240b1b6cdf891ad5302b9"
     },
     {
       "relative": "convert_models.py",
-      "size": 14334,
-      "sha256": "c9c05bef04df4bb3649fe2fc4260dfb634c23ee11f803a587bec4401c0f1086f"
+      "size": 14642,
+      "sha256": "268a4e00fe2b919a1f12c0747a613fbe3085e1d6fd57f1d5be8994d6c10d3e57"
     },
     {
       "relative": "convert_preserved.py",
-      "size": 16727,
-      "sha256": "f5b4a52b7dd0a8960a4b3f4f3ff6974ca0591feaf8808ae5d3ffe205b1699e7d"
+      "size": 16832,
+      "sha256": "8c4b0cc826a31b8cb02996636eec3e4a463fd63dd83bf59b9452db214f002dd6"
     },
     {
       "relative": "convert_reverse.py",
-      "size": 14825,
-      "sha256": "23d3e7ec3b1889a60c9e14340c7ac3602cbbaf8e9dc9a111dd49d36eef743d32"
+      "size": 14841,
+      "sha256": "46150e0c8db08febe952b45701736b15c862545670969a36e3185cf8dd369815"
     },
     {
       "relative": "converter.py",
-      "size": 4375,
-      "sha256": "553a4da554972d94d8bc70d2a54ff2ad5a2695234400388c6b8add5721d73f20"
+      "size": 4565,
+      "sha256": "9ce060daa52d9aa3b799cfe816838edd7ffb945a7ced0d247dc60fa4661b2097"
     },
     {
       "relative": "corpus_inventory.py",
-      "size": 12725,
-      "sha256": "419fe4fd85e1a17e0baef37bcb744d99768cac7ebff765ad2e3fbdee53f67361"
+      "size": 15522,
+      "sha256": "c6a9554a1d3e009300e0cf3dba6766e0e784d32e883e508940a95294d893a7e6"
     },
     {
       "relative": "havok/__init__.py",
@@ -115,8 +139,13 @@
     },
     {
       "relative": "inspect_nif.py",
-      "size": 7970,
-      "sha256": "e4b3493d74d3c45880de23640ffbb29225662ce6fbe29bfd761e41b5537aef40"
+      "size": 10501,
+      "sha256": "e3609fbd685bd8f34e5d95b694c9e3fc8be14bf699ad25d63bf63e6ede5a664f"
+    },
+    {
+      "relative": "launcher.manifest",
+      "size": 386,
+      "sha256": "896cc4ccff58a18e312d545ee9b2bb4a3da09cb5c0dfc96d5a1376628f55e26b"
     },
     {
       "relative": "publication_guard.py",
@@ -140,8 +169,8 @@
     },
     {
       "relative": "shader_animation.py",
-      "size": 11529,
-      "sha256": "d46dd57704c992de1930b4dbcf04ae3ea62f6a890936727c7baea191112662d3"
+      "size": 11668,
+      "sha256": "9f13fe4cb6457272575cb7859ec4d5fba2fd6706ccf44e65e09652f4b08d5575"
     },
     {
       "relative": "shader_flags.py",
@@ -150,8 +179,8 @@
     },
     {
       "relative": "skin_reference.py",
-      "size": 5554,
-      "sha256": "9f678a46aeac8711424e51e771215a167a2c3558f557db527c004c191eb9c0fe"
+      "size": 6045,
+      "sha256": "1b65998cc4b5b49bde4407db5974b91203b81badb9f36b398928fca88dd20885"
     },
     {
       "relative": "tests/test_animated.py",
@@ -179,6 +208,11 @@
       "sha256": "02f91711c0d2383e7518297e8fd1b1f37bf5d36a1f4c260a6b9a0fe4cb21ad3b"
     },
     {
+      "relative": "tests/test_launcher_security.py",
+      "size": 12122,
+      "sha256": "b974635d98d882b13e9797952d3228d03e65320697dbdd358a2f4c249d62367b"
+    },
+    {
       "relative": "tests/test_lod.py",
       "size": 4231,
       "sha256": "fa1944eba8c1952a1037f0fe0430beb4398cc5ed60aa1e0f3f23acadc925f80d"
@@ -195,8 +229,13 @@
     },
     {
       "relative": "tests/test_scheduling.py",
-      "size": 10283,
-      "sha256": "6404f073e938dc12d523d6d4938d5a9130bc44fd0eb4497b052dead1a5cade71"
+      "size": 10338,
+      "sha256": "eadfe9a7bd8153d21335626e65f8bef1f761b47995a39e51ba48e8e6305a735c"
+    },
+    {
+      "relative": "tests/test_security_hardening.py",
+      "size": 11537,
+      "sha256": "51615d7affd7afa803bd148be3f20a0416a4f47fb709c04fafd38c3139d0e8e3"
     },
     {
       "relative": "tests/test_shader_animation.py",
@@ -217,6 +256,11 @@
       "relative": "tests/test_validate_samples.py",
       "size": 2813,
       "sha256": "21304528b48bd58d38d98d20701dab7f6a38a4c296b204d37f7d69bc0c8bb4ab"
+    },
+    {
+      "relative": "tools/build_launcher.ps1",
+      "size": 1073,
+      "sha256": "5be876882c9123f42768ebda7ebe98cce78433f9dab81b982fc379bbe74122e2"
     },
     {
       "relative": "tools/legacy/README.md",

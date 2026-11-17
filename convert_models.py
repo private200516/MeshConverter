@@ -2,7 +2,7 @@
 """Restricted FO76 static BSTriShape -> FO4 converter. Never overwrites input."""
 import sys,struct,json,math,hashlib
 from pathlib import Path
-from inspect_nif import Nif,Reader
+from inspect_nif import Nif,Reader,MAX_TABLE_ITEMS
 from havok.bhk_autopack import pack_compressed_mesh
 from havok.bhk_autounpack import parse_bytes
 P=lambda f,*a:struct.pack('<'+f,*a)
@@ -24,7 +24,7 @@ class Writer:
  def net(self,name):return P('iIi',self.sid(name),0,-1)
  def av(self,name,transform,collision=-1,extra=(),flags=14,ctrl=-1):
   return P('iI',self.sid(name),len(extra))+b''.join(P('i',x) for x in extra)+P('iI13fi',ctrl,flags,*transform,collision)
- def save(self,path):
+ def save(self,path,*,exclusive=False):
   types=list(dict.fromkeys(t for t,b in self.blocks));n=len(self.blocks)
   h=b'Gamebryo File Format, Version 20.2.0.7\n'+P('IBIII',0x14020007,1,12,n,self.bs)
   author=b'Mesh Converter\0';h+=P('B',len(author))+author
@@ -33,7 +33,11 @@ class Writer:
   h+=P('H',len(types))+b''.join(sized(t) for t in types)
   h+=P('H'*n,*[types.index(t) for t,b in self.blocks])+P('I'*n,*[len(b) for t,b in self.blocks])
   h+=P('II',len(self.strings),max((len(s.encode('utf8',errors='surrogateescape')) for s in self.strings),default=0))+b''.join(sized(s) for s in self.strings)+P('I',0)
-  path=Path(path);path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(h+b''.join(b for t,b in self.blocks)+P('Ii',1,0))
+  path=Path(path);path.parent.mkdir(parents=True,exist_ok=True)
+  # Conversion routes use exclusive creation: an attacker creating a hard link
+  # after their absence check must not cause an existing file to be truncated.
+  with path.open('xb' if exclusive else 'wb') as stream:
+   stream.write(h+b''.join(b for t,b in self.blocks)+P('Ii',1,0))
 def geometry(n,d):
  b=n.blocks[d['id']];stride=(d['desc']&15)*4; attr=d['desc']>>44
  assert attr&1 and not attr&0x40,'Skinned/unsupported vertices'
@@ -55,7 +59,7 @@ STATIC_TYPES=NODE_TYPES|SHAPE_TYPES|EXTRA_TYPES|{'BSLightingShaderProperty','BSE
 
 def extra_count(r,minimum_entry_size):
  count=r.u()
- if count>(len(r.b)-r.p)//minimum_entry_size:raise ValueError('Extra-data array count exceeds remaining payload')
+ if count>MAX_TABLE_ITEMS or count>(len(r.b)-r.p)//minimum_entry_size:raise ValueError('Extra-data array count exceeds safety limit or remaining payload')
  return count
 
 def validate_extra(n,typ,b):
@@ -216,7 +220,7 @@ def convert(src,dest,material_prefix=None,collision=True,dry_run=False,_nif=None
   if len(parsed)!=1 or len(parsed[0].faces)!=len(faces):raise ValueError('Collision roundtrip failed')
   co=w.add('bhkNPCollisionObject');phys=w.add('bhkPhysicsSystem',P('I',len(hk))+hk);w.set(co,P('iHiI',root,128,phys,0))
   rb=bytearray(w.blocks[root][1]);struct.pack_into('<i',rb,68+4*len(root_extras),co);w.set(root,bytes(rb))
- w.save(dest);out=Nif(dest);od={d['id']:d for d in out.inspect()}
+ w.save(dest,exclusive=True);out=Nif(dest);od={d['id']:d for d in out.inspect()}
  if out.bs!=130:raise ValueError('Output version validation failed')
  for old,idx,d in shapes:
   target=parse_shape(out,idx)

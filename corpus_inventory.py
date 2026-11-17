@@ -13,8 +13,25 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import stat
 import struct
 import time
+
+# Large enough for a complete game resource tree and sizeable mod collections.
+# Enumeration stops before allocating an unbounded GUI queue or skeleton cache.
+MAX_SCAN_FILES = 250_000
+MAX_SCAN_DIRECTORIES = 250_000
+MAX_SCAN_ENTRIES = 2_000_000
+MAX_SCAN_BYTES = 1024 * 1024 * 1024 * 1024  # 1 TiB of selected NIFs
+_REPARSE_POINT = getattr(stat, 'FILE_ATTRIBUTE_REPARSE_POINT', 0x400)
+
+
+class ScanLimitError(ValueError):
+    """The selected tree exceeds a documented enumeration resource budget."""
+
+
+def _reparse(info):
+    return stat.S_ISLNK(info.st_mode) or bool(getattr(info, 'st_file_attributes', 0) & _REPARSE_POINT)
 
 
 class HeaderError(ValueError):
@@ -166,21 +183,61 @@ def inspect_header(path):
                     categories=_categories(types))
 
 
-def nif_files(root):
-    """Yield paths without following directory symlinks or building a file list."""
+def nif_files(root, *, stop=None, name_filter=None):
+    """Stream regular NIF paths under finite traversal/count/byte budgets.
+
+    All reparse entries, including Windows junctions, are skipped. Callers that
+    write files must still validate their approved source/output boundaries.
+    """
     root = Path(root)
-    if root.is_file():
+    root_info = root.lstat()
+    if _reparse(root_info):
+        raise ValueError('NIF enumeration root must not be a symlink/junction/reparse point')
+    if stat.S_ISREG(root_info.st_mode):
         if root.suffix.lower() == ".nif":
             yield root
         return
+    if not stat.S_ISDIR(root_info.st_mode):
+        raise ValueError('NIF enumeration root must be a regular file or directory')
     stack = [root]
+    directories = 1
+    visited = set()
+    entries_seen = files_seen = selected_bytes = 0
     while stack:
+        if stop is not None and stop.is_set():
+            return
         directory = stack.pop()
+        info = directory.lstat()
+        if _reparse(info) or not stat.S_ISDIR(info.st_mode):
+            raise ValueError('NIF enumeration directory changed or became a reparse point')
+        identity = (info.st_dev, info.st_ino)
+        if identity in visited:
+            continue
+        visited.add(identity)
         with os.scandir(directory) as entries:
             for entry in entries:
-                if entry.is_dir(follow_symlinks=False):
+                if stop is not None and stop.is_set():
+                    return
+                entries_seen += 1
+                if entries_seen > MAX_SCAN_ENTRIES:
+                    raise ScanLimitError(f'Source tree exceeds the {MAX_SCAN_ENTRIES:,} entry scan limit; select a smaller folder')
+                info = entry.stat(follow_symlinks=False)
+                if _reparse(info):
+                    continue
+                if stat.S_ISDIR(info.st_mode):
+                    directories += 1
+                    if directories > MAX_SCAN_DIRECTORIES:
+                        raise ScanLimitError(f'Source tree exceeds the {MAX_SCAN_DIRECTORIES:,} directory scan limit; select a smaller folder')
                     stack.append(Path(entry.path))
-                elif entry.is_file(follow_symlinks=False) and entry.name.lower().endswith(".nif"):
+                elif stat.S_ISREG(info.st_mode) and entry.name.lower().endswith(".nif"):
+                    if name_filter is not None and not name_filter(entry.name):
+                        continue
+                    files_seen += 1
+                    selected_bytes += info.st_size
+                    if files_seen > MAX_SCAN_FILES:
+                        raise ScanLimitError(f'Selected tree exceeds the {MAX_SCAN_FILES:,} NIF file scan limit; select a smaller folder')
+                    if selected_bytes > MAX_SCAN_BYTES:
+                        raise ScanLimitError('Selected NIFs exceed the 1 TiB scan limit; select a smaller folder')
                     yield Path(entry.path)
 
 

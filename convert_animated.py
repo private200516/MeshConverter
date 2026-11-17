@@ -4,7 +4,7 @@ GPL-3.0. Animation layout reference: niftools/nifxml.
 """
 import struct,hashlib,math
 from pathlib import Path
-from inspect_nif import Nif,Reader
+from inspect_nif import Nif,Reader,MAX_TABLE_ITEMS
 from convert_models import Writer,P,sized,LIGHT,COMMON_EXTRA_TYPES,validate_extra,material_path
 from convert_preserved import shape,effect,finite,ref
 from havok.bhk_autopack import pack_shapes
@@ -24,7 +24,7 @@ def _done(r,label):
 
 def _count(r,size):
  count=r.u()
- if count>(len(r.b)-r.p)//size:raise ValueError('动画数组数量超出块大小')
+ if count>MAX_TABLE_ITEMS or count>(len(r.b)-r.p)//size:raise ValueError('动画数组数量超出安全限制或块大小')
  return count
 
 def _keys(r,width,count=None,kind=None,quaternion=False):
@@ -193,7 +193,9 @@ def convert(src,dest,collision=True,dry_run=False,_nif=None):
    if len(colors)>1:raise ValueError('共享着色器的顶点颜色属性不一致')
    struct.pack_into('<I',sh,20,1|(32 if True in colors else 0));w.set(i,bytes(sh))
   elif typ=='BSShaderTextureSet':
-   r=Reader(b);tx=[r.s() for _ in range(r.u())]
+   r=Reader(b);count=r.u()
+   if count!=15:raise ValueError('未验证的 FO76 贴图引用布局')
+   tx=[r.s() for _ in range(count)]
    if len(tx)!=15 or r.p!=len(b):raise ValueError('贴图引用布局未支持')
    w.set(i,P('I',9)+b''.join(sized(t) for t in tx[:9]))
   elif typ=='BSEffectShaderProperty':
@@ -248,7 +250,7 @@ def convert(src,dest,collision=True,dry_run=False,_nif=None):
  if systems:notes.append('碰撞按渲染网格重建为节点局部零质量关键帧碰撞，未保留原始动力学参数。' if collision else '已移除碰撞绑定和 FO76 物理数据，动画块索引不变。')
  info=dict(shapes=len(shapes),vertices=sum(d['vertices'] for _,d in shapes),triangles=sum(d['triangles'] for _,d in shapes),sequences=sequences,animation_blocks=animation,animated_targets=sorted(targets),collision_rebuilt='FO4 keyframed node-local meshes' if collision and systems else None,collision_removed=bool(systems and not collision),collision_bodies=body_reports,notes=notes,route='animated',animation_runtime_verified=False)
  if dry_run:return info
- w.save(dest);out=Nif(dest)
+ w.save(dest,exclusive=True);out=Nif(dest)
  for i,t in enumerate(n.indices):
   if n.types[t] in ANIM or (collision and n.types[t] in NODES|{'BSXFlags','bhkNPCollisionObject','NiAlphaProperty'}):
    if out.blocks[i]!=(convert_animation_block(n,i,130,w) if n.types[t] in ANIM else n.blocks[i]):raise ValueError('动画或节点引用发生改变')

@@ -11,8 +11,12 @@ import time
 from pathlib import Path
 
 from inspect_nif import Nif, Reader
+from corpus_inventory import nif_files
+from publication_guard import absolute_path
 
 _cache = {}
+MAX_REFERENCE_FILES = 4096
+MAX_REFERENCE_BYTES = 8 * 1024 * 1024 * 1024
 
 
 def skeleton_profiles(reference_root, expected_bs=130):
@@ -23,7 +27,7 @@ def skeleton_profiles(reference_root, expected_bs=130):
     """
     if not reference_root:
         raise ValueError('蒙皮转换需要选择目标游戏的 Meshes 目录或 skeleton.nif 作为参照')
-    root = Path(reference_root).resolve()
+    root = absolute_path(reference_root)
     if not root.exists():
         raise ValueError('目标骨骼参照路径不存在：' + str(root))
     key = (str(root), expected_bs)
@@ -43,8 +47,14 @@ def skeleton_profiles(reference_root, expected_bs=130):
             if (root / sub).is_dir():
                 root = root / sub
                 break
-        candidates = sorted((p for p in root.rglob('*.nif')
-                             if p.name.lower().startswith('skeleton')), key=str)
+        candidates = []
+        total_bytes = 0
+        for path in nif_files(root, name_filter=lambda name: name.lower().startswith('skeleton')):
+            candidates.append(path)
+            total_bytes += path.lstat().st_size
+            if len(candidates) > MAX_REFERENCE_FILES or total_bytes > MAX_REFERENCE_BYTES:
+                raise ValueError('Skeleton reference tree exceeds the 4,096 file / 8 GiB safety limits; select a smaller directory or one skeleton.nif')
+        candidates.sort(key=str)
     profiles, stamps = [], []
     for path in candidates:
         stat = path.stat()
@@ -65,7 +75,7 @@ def skeleton_profiles(reference_root, expected_bs=130):
             if names:
                 profiles.append(dict(path=str(path), bs=expected_bs,
                                      names=frozenset(names),
-                                     sha256=hashlib.sha256(path.read_bytes()).hexdigest()))
+                                     sha256=n.source_sha256))
         except (ValueError, IndexError, OSError, struct.error):
             continue
     if not profiles:

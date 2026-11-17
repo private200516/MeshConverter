@@ -28,8 +28,10 @@ def convert_file(src, dest, direction='76-to-4', collision=True, dry_run=False,
     Source/output roots must be disjoint.  Staged worker writes are subject to
     the same checks as final writes; GUI publication must also use this guard.
     """
-    if direction not in DIRECTIONS:
+    if not isinstance(direction,str) or direction not in DIRECTIONS:
         raise ValueError('请选择 76-to-4 或 4-to-76 转换方向')
+    if any(type(value) is not bool for value in (collision,dry_run,_staged)):
+        raise ValueError('Conversion switches must be JSON/Python booleans')
     src, dest = absolute_path(src), absolute_path(dest)
     boundary = OutputBoundary(output_root if output_root is not None else dest.parent,
                               source_root if source_root is not None else src.parent)

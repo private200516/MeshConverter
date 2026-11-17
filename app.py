@@ -4,6 +4,7 @@ from collections import deque, Counter
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 from pathlib import Path
 from converter import convert_file, DIRECTIONS, BUILD
+from corpus_inventory import nif_files
 from publication_guard import OutputBoundary, absolute_path
 
 def worker(conn,src,dest,collision,dry,direction='76-to-4',reference_root=None):
@@ -85,6 +86,13 @@ class Api:
                 self._status_counts[after]+=1
             row.update(changes);self._rows_revision+=1
     def snapshot(self,after_log=0,row_offset=-1,row_limit=250,after_rows_revision=-1,after_row_offset=-1,after_row_limit=250):
+        # Bridge arguments are JSON data, never coercible Python objects or
+        # booleans/strings standing in for pagination integers.
+        arguments=(after_log,row_offset,row_limit,after_rows_revision,after_row_offset,after_row_limit)
+        if any(type(value) is not int or not -1<=value<=2**53-1 for value in arguments):
+            return {'error':'无效分页参数 / Invalid pagination arguments'}
+        if after_log<0 or row_limit<1 or after_row_limit<1:
+            return {'error':'无效分页参数 / Invalid pagination arguments'}
         with self._guard:
             self._index_rows()
             rows=self.state['rows'];limit=max(1,min(500,int(row_limit)))
@@ -125,23 +133,34 @@ class Api:
     def configure_options(self,direction,reference=None):
         with self._guard:
             if self.busy:return {'error':'任务进行中，请先取消'}
-            if direction not in DIRECTIONS:return {'error':'无效转换方向'}
-            if reference is not None and reference and not Path(reference).exists():return {'error':'参照路径不存在'}
-            if reference is not None:self.state['reference']=str(reference)
+            if not isinstance(direction,str) or direction not in DIRECTIONS:return {'error':'无效转换方向'}
+            if reference is not None:
+                if not isinstance(reference,str) or len(reference)>32767 or '\x00' in reference:
+                    return {'error':'无效参照路径 / Invalid reference path'}
+                try:
+                    if reference:
+                        reference=absolute_path(reference)
+                        if not reference.exists():return {'error':'参照路径不存在'}
+                except (OSError,ValueError) as error:return {'error':str(error)}
+                self.state['reference']=str(reference)
             self.state.update(direction=direction,rows=[],phase='idle',report='',completed=0)
             return {'ok':True}
     def choose(self,kind):
-        import webview
         if kind not in ('input','output','reference','skeleton'):return {'error':'无效目录类型'}
         if self.busy:return {'error':'任务进行中，请先取消'}
+        import webview
         result=self._window.create_file_dialog(webview.FileDialog.OPEN,file_types=('NIF files (*.nif)',),allow_multiple=False) if kind=='skeleton' else self._window.create_file_dialog(webview.FileDialog.FOLDER)
         if result:
-            with self._guard:self.state['reference' if kind=='skeleton' else kind]=result[0];self.state['rows']=[];self.state['phase']='idle';self.state['report']=''
+            with self._guard:
+                # A dialog can return after another bridge thread started work.
+                if self.busy:return {'error':'任务进行中，请先取消'}
+                self.state['reference' if kind=='skeleton' else kind]=result[0];self.state['rows']=[];self.state['phase']='idle';self.state['report']=''
         return self.snapshot()
     def start(self,kind,collision=True):
         with self._guard:
             if self.busy:return {'error':'任务已经在运行'}
             if kind not in ('scan','convert'):return {'error':'未知任务'}
+            if type(collision) is not bool:return {'error':'碰撞选项必须为布尔值 / Collision must be a boolean'}
             a=self.state['input'];b=self.state['output']
             if not a or not b:return {'error':'请先选择源目录和输出目录'}
             try:
@@ -223,15 +242,8 @@ class Api:
             source=absolute_path(self.state['input']);dest=absolute_path(self.state['output'])
             boundary=OutputBoundary(dest,source)
             if kind=='scan':
-                files=[]
-                for folder,dirs,names in os.walk(source,followlinks=False):
-                    if self._stop.is_set():break
-                    dirs[:]=[d for d in dirs if not Path(folder,d).is_symlink() and not Path(folder,d).is_junction()]
-                    for name in names:
-                        f=Path(folder,name)
-                        if f.suffix.lower()=='.nif' and not f.is_symlink():files.append(f)
-                files.sort()
-                self._update(rows=[{'path':str(f),'name':str(f.relative_to(source)),'status':'等待扫描','size':f.stat().st_size,'detail':''} for f in files])
+                files=sorted(nif_files(source,stop=self._stop))
+                self._update(rows=[{'path':str(f),'name':str(f.relative_to(source)),'status':'等待扫描','size':f.lstat().st_size,'detail':''} for f in files])
             rows=self.state['rows']
             if not rows:self._update(message='目录中没有 NIF 模型',phase='idle');self._log('目录中没有 NIF 模型','warn');return
             width=self._parallelism(rows)

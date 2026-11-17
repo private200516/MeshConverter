@@ -6,7 +6,7 @@ No engine playback or material conversion is implied by structural validation.
 """
 import math
 import struct
-from inspect_nif import Reader
+from inspect_nif import Reader, MAX_TABLE_ITEMS
 
 FLOATS = {'NiFloatInterpolator', 'NiBlendFloatInterpolator'}
 POINTS = {'NiPoint3Interpolator', 'NiBlendPoint3Interpolator'}
@@ -48,6 +48,8 @@ def _ref(n, index, types, label, nullable=False):
 
 def _keys(reader, width, boolean=False):
     count = reader.u()
+    if count > MAX_TABLE_ITEMS:
+        raise ValueError('Animation key count exceeds the 1,000,000 item safety limit')
     if not count:
         return {'keys': 0}
     kind = reader.u()

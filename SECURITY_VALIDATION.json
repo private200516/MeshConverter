@@ -1,0 +1,37 @@
+{
+  "revision": "security-hardening-20261117",
+  "public_version": "ALPHA 1.0",
+  "author": "private0516",
+  "date": "2026-11-17",
+  "passed": true,
+  "regression_tests": 399,
+  "tests": {
+    "MeshConverter": {
+      "tests": 122,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "python": "3.12.14 (main, Aug 25 2026, 14:01:42) [MSC v.1944 64 bit (AMD64)]"
+    },
+    "TextureConverter": {
+      "tests": 277,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "python": "3.12.14 (main, Aug 25 2026, 14:01:42) [MSC v.1944 64 bit (AMD64)]"
+    }
+  },
+  "launcher_tests_included_in_regression": 16,
+  "native_checks": {
+    "mesh_final_exe_webview2": true,
+    "mesh_startup_interrupt": true,
+    "texture_final_exe_with_test_entry_and_installed_qt_mainwindow": true,
+    "texture_windows_platform": true,
+    "texture_motion_screenshots": 19,
+    "texture_installed_exe_bgsm_bgem_cli": true,
+    "texture_preview_nested_job": true
+  },
+  "synthetic_fixtures_only": true,
+  "in_game_revalidated": false,
+  "external_certification": false
+}

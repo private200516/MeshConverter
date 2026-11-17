@@ -32,7 +32,17 @@ def main():
     except (OSError, ValueError) as error:
         parser.error(str(error))
     records=[];counts={'passed':0,'rejected':0,'skipped':0}
-    for path in nif_files(source):
+    paths=iter(nif_files(source))
+    while True:
+        try:path=next(paths)
+        except StopIteration:break
+        except (OSError,ValueError) as error:
+            # Keep a report of completed outputs when enumeration reaches a
+            # resource limit or an input directory disappears mid-batch.
+            result=dict(input=str(source),status='rejected',error=f'{type(error).__name__}: {error}')
+            records.append(result);counts['rejected']+=1
+            print(json.dumps(result,ensure_ascii=True),flush=True)
+            break
         destination=output/path.relative_to(base)
         try:
             data=convert_file(path,destination,direction=args.direction,collision=not args.no_collision,

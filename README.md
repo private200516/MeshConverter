@@ -1,6 +1,10 @@
 # MeshConverter · ALPHA 1.0
 
-> **当前安全修订 / Current security revision:** `security-hardening-20261117` · ALPHA 1.0。399 项回归通过；见 [安全更新](SECURITY_REVISION_20261117.md)、[安全边界](SECURITY.md) 和 [构建记录](BUILD_PROVENANCE.json)。
+<p><img src="assets/toolkit-logo.png" width="96" alt="76 Converter Toolkit logo"></p>
+
+> **当前版本 / Current revision:** `logo-security-release-20261117` · ALPHA 1.0。新 Logo 与安全加固，399 项回归通过；见 [本轮更新](LOGO_RELEASE_20261117.md)、[安全边界](SECURITY.md) 和 [构建记录](BUILD_PROVENANCE.json)。
+
+> **基础安全修订 / Included security revision:** `security-hardening-20261117` · ALPHA 1.0。399 项回归通过；见 [安全更新](SECURITY_REVISION_20261117.md)、[安全边界](SECURITY.md) 和 [构建记录](BUILD_PROVENANCE.json)。
 
 > **历史动效验证 / Historical motion validation:** 2026-11-17 Pinterest motion. 启动 1400ms、关闭 650ms；323 项回归通过。详见 [MOTION_REVISION_20261117.md](MOTION_REVISION_20261117.md)。
 
@@ -8,7 +12,7 @@
 
 在本地转换受支持的 Fallout 76 BS155 ↔ Fallout 4 BS130 NIF 结构。项目代码采用 GPL-3.0；作者为 private0516。原项目使用 GPT-6 Astra 辅助开发，代码与界面包含 AI 生成内容。本项目不代表 Bethesda、OpenAI 或依赖项目背书。
 
-这是完整的源代码开发包，包含原包的 `ui.html`、字体、图标及救护车线框界面资源；这些资源的公开发布已获用户明确授权；字体、图标及线框资源保留经核对的原始字节，`ui.html` 已纳入本轮动效更新。包内没有预编译产品 EXE、Python runtime 或安装后的 vendor 依赖，也不提供用于转换的游戏样本或游戏资源库。第三方组件仍适用各自许可。
+这是完整的源代码开发包，包含原包的 `ui.html`、字体、图标及救护车线框界面资源；这些资源的公开发布已获用户明确授权；字体与线框资源保留经核对的原始字节，图标更新为本轮作者提供的 Toolkit Logo，`ui.html` 已纳入本轮动效更新。包内没有预编译产品 EXE、Python runtime 或安装后的 vendor 依赖，也不提供用于转换的游戏样本或游戏资源库。第三方组件仍适用各自许可。
 
 ## Windows 下载
 

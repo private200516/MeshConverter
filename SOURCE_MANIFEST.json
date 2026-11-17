@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "revision": "security-hardening-20261117",
+  "revision": "logo-security-release-20261117",
   "files": [
     {
       "relative": ".gitignore",
@@ -14,13 +14,18 @@
     },
     {
       "relative": "BUILD_PROVENANCE.json",
-      "size": 2474,
-      "sha256": "ea38c4a495bde7bfe12b04f6f47bbacc0da57d216cd46f227f6d5496a669672a"
+      "size": 2774,
+      "sha256": "5deaab99d91538bc86b717f4f8b533af6ee56220fd13d935c3d1d480fbb1b55b"
     },
     {
       "relative": "LICENSE",
       "size": 35149,
       "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+    },
+    {
+      "relative": "LOGO_RELEASE_20261117.md",
+      "size": 3797,
+      "sha256": "c1b1aae6f4abd1f6a40f2fac54c7ae06930b7a1eb07e39d2b18c2dc30015f1c5"
     },
     {
       "relative": "Launcher.cs",
@@ -39,8 +44,8 @@
     },
     {
       "relative": "README.md",
-      "size": 8273,
-      "sha256": "3550eea3af51bb5f87cbbc51da2af1ca3708079bdc6a8c99d9732252182b18d2"
+      "size": 8665,
+      "sha256": "72f2e86c5bbdf3fd5cfab77dce572e437130cbe3483a1d532acb5168c701e18e"
     },
     {
       "relative": "RELEASE_NOTES_20261117.md",
@@ -59,13 +64,13 @@
     },
     {
       "relative": "SECURITY_VALIDATION.json",
-      "size": 1109,
-      "sha256": "0375211eed611348e1eae7d70a1193f094b0f0e5ec814fa1f93746e56efb6b3c"
+      "size": 1202,
+      "sha256": "43747fea0ead4492a9dc234bb77cc9326578bacd147bceec4cace9a032e91543"
     },
     {
       "relative": "THIRD_PARTY.md",
-      "size": 580,
-      "sha256": "014f2f7c973ed16e649bdb41ed29dcc0d552c888a7a033ada9e0165b99e298ff"
+      "size": 825,
+      "sha256": "8acfd5d7c7cd1cc8e7d01e8b66ceb875f746cd97f24a9ae4d3fe5f93413c4328"
     },
     {
       "relative": "UPSTREAM_DEPENDENCIES.md",
@@ -79,13 +84,18 @@
     },
     {
       "relative": "app.ico",
-      "size": 13289,
-      "sha256": "6bceb6e97049a7dcb6e394254430327becf33de1310fae445a651aa2c6945001"
+      "size": 85552,
+      "sha256": "e9d3de56ec883865d26cb859dd8380715641bf59586b99dbb22b95aa6942a8ee"
     },
     {
       "relative": "app.py",
       "size": 27207,
       "sha256": "9f2cd8450e1cc8522d62b98bbf084ab1ffd6db43d3bda6287a0602daee093886"
+    },
+    {
+      "relative": "assets/toolkit-logo.png",
+      "size": 835385,
+      "sha256": "bb5462c24e73a18ba7fac4e9087daca464ae6f3116429be37c665b481089810d"
     },
     {
       "relative": "batch_nif.py",
@@ -263,6 +273,11 @@
       "sha256": "5be876882c9123f42768ebda7ebe98cce78433f9dab81b982fc379bbe74122e2"
     },
     {
+      "relative": "tools/embed_logo.py",
+      "size": 821,
+      "sha256": "0f1c92e1a80df64425147769524f0b8bb14e5c2f71b7ebd0f2d76cbf07dc652d"
+    },
+    {
       "relative": "tools/legacy/README.md",
       "size": 1011,
       "sha256": "df144c0e792826380ab35254b495656b0787ca6e1ee3bc20dd4b4bd87618103a"
@@ -284,8 +299,8 @@
     },
     {
       "relative": "ui.html",
-      "size": 721643,
-      "sha256": "41f4da6680a6a0130f341bf2caa0a0bc871792cd8e2a5c6641d571ef87abb229"
+      "size": 1836038,
+      "sha256": "95912978f08d091d8e64786c78851f0193e06abc5bf1dd9e62a18e4af9a64ced"
     },
     {
       "relative": "validate_samples.py",

@@ -8,3 +8,5 @@ No Blender or native DLL dependency is required for this restricted batch conver
 Shader animation parameter mapping references (format facts, no source copied):
 https://github.com/fo76utils/nifskope/blob/develop/src/gl/controllers.h
 https://github.com/fo76utils/nifskope/blob/develop/src/gl/controllers.cpp
+
+Toolkit logo update 2026-11-17: assets/toolkit-logo.png is the image supplied by the project author for these tools. Original PNG bytes are retained; Windows icons are format/size exports. Existing third-party and font terms remain separate.

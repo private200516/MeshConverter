@@ -2,13 +2,13 @@
   "schema_version": 1,
   "product": "MeshConverter",
   "public_version": "ALPHA 1.0",
-  "revision": "logo-security-release-20261117",
+  "revision": "logo-refinement-release-20261117",
   "logo": {
     "source": "assets/toolkit-logo.png",
-    "png_sha256": "bb5462c24e73a18ba7fac4e9087daca464ae6f3116429be37c665b481089810d",
+    "png_sha256": "31d8430db3b46afc4d30f1608935018eb7ef439021d8ff3c6a032c6201ddc35c",
     "user_supplied": true,
     "png_bytes_unchanged": true,
-    "icon_sha256": "e9d3de56ec883865d26cb859dd8380715641bf59586b99dbb22b95aa6942a8ee"
+    "icon_sha256": "1ed911cbd79280f2251d2f1db39034cd16b7701573551367c23e99cf14a0c782"
   },
   "author": "private0516",
   "project_license": "GPL-3.0",
@@ -24,7 +24,7 @@
     "source": "Launcher.cs",
     "source_sha256": "2153ca551524f2e70cd4baaa06a8e8cb9e4846e36d69e5ae6f50599188fdd837",
     "manifest_sha256": "896cc4ccff58a18e312d545ee9b2bb4a3da09cb5c0dfc96d5a1376628f55e26b",
-    "exe_sha256": "c582d6745d57a5a71673bed63f0112e197ecd6bc49d8dbb8c6fa01720001ffff",
+    "exe_sha256": "a13b1432d86b00654f4e4cbdfdd04b8f53dcba20dfe34a0867bc7454e36155cb",
     "compiler": "Windows .NET Framework v4 x64 C# compiler",
     "compiler_sha256": "eca02e6b15cde93009a59a3d129d5a77fb5008f2e1cf62cf573b6737c747ecc3",
     "build_script": "tools/build_launcher.ps1",

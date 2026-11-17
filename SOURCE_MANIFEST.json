@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "revision": "logo-security-release-20261117",
+  "revision": "logo-refinement-release-20261117",
   "files": [
     {
       "relative": ".gitignore",
@@ -14,13 +14,18 @@
     },
     {
       "relative": "BUILD_PROVENANCE.json",
-      "size": 2774,
-      "sha256": "5deaab99d91538bc86b717f4f8b533af6ee56220fd13d935c3d1d480fbb1b55b"
+      "size": 2776,
+      "sha256": "0c9f0988cbc60c8ba54b3395b0b70246fe243044a48eea041658abbbe60f8b2d"
     },
     {
       "relative": "LICENSE",
       "size": 35149,
       "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+    },
+    {
+      "relative": "LOGO_REFINEMENT_20261117.md",
+      "size": 3954,
+      "sha256": "13d8f0098fecdf8124bc3ce24a6bbcd4e6ffed83171c2ad4b508e8cb9ba1a8b3"
     },
     {
       "relative": "LOGO_RELEASE_20261117.md",
@@ -44,8 +49,8 @@
     },
     {
       "relative": "README.md",
-      "size": 8665,
-      "sha256": "72f2e86c5bbdf3fd5cfab77dce572e437130cbe3483a1d532acb5168c701e18e"
+      "size": 8674,
+      "sha256": "f9fdf51329d8c205710473a976e0777c86ad4909c17f6d0e8c58b66390608706"
     },
     {
       "relative": "RELEASE_NOTES_20261117.md",
@@ -64,8 +69,8 @@
     },
     {
       "relative": "SECURITY_VALIDATION.json",
-      "size": 1202,
-      "sha256": "43747fea0ead4492a9dc234bb77cc9326578bacd147bceec4cace9a032e91543"
+      "size": 1204,
+      "sha256": "74ef789b3bca2c513d03ba2375c0cf4698db9e11a68737c58bde32f0e4a37c1c"
     },
     {
       "relative": "THIRD_PARTY.md",
@@ -84,8 +89,8 @@
     },
     {
       "relative": "app.ico",
-      "size": 85552,
-      "sha256": "e9d3de56ec883865d26cb859dd8380715641bf59586b99dbb22b95aa6942a8ee"
+      "size": 64112,
+      "sha256": "1ed911cbd79280f2251d2f1db39034cd16b7701573551367c23e99cf14a0c782"
     },
     {
       "relative": "app.py",
@@ -94,8 +99,8 @@
     },
     {
       "relative": "assets/toolkit-logo.png",
-      "size": 835385,
-      "sha256": "bb5462c24e73a18ba7fac4e9087daca464ae6f3116429be37c665b481089810d"
+      "size": 612313,
+      "sha256": "31d8430db3b46afc4d30f1608935018eb7ef439021d8ff3c6a032c6201ddc35c"
     },
     {
       "relative": "batch_nif.py",
@@ -299,8 +304,8 @@
     },
     {
       "relative": "ui.html",
-      "size": 1836038,
-      "sha256": "95912978f08d091d8e64786c78851f0193e06abc5bf1dd9e62a18e4af9a64ced"
+      "size": 1538816,
+      "sha256": "03cbd53cc1d91a410aa4ff79bc2c8458b9b91e86a27636315b820b68a6036222"
     },
     {
       "relative": "validate_samples.py",

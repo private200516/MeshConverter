@@ -2,7 +2,9 @@
 
 <p><img src="assets/toolkit-logo.png" width="96" alt="76 Converter Toolkit logo"></p>
 
-> **当前版本 / Current revision:** `logo-security-release-20261117` · ALPHA 1.0。新 Logo 与安全加固，399 项回归通过；见 [本轮更新](LOGO_RELEASE_20261117.md)、[安全边界](SECURITY.md) 和 [构建记录](BUILD_PROVENANCE.json)。
+> **当前版本 / Current revision:** `logo-refinement-release-20261117` · ALPHA 1.0。新 Logo 与安全加固，399 项回归通过；见 [本轮更新](LOGO_REFINEMENT_20261117.md)、[安全边界](SECURITY.md) 和 [构建记录](BUILD_PROVENANCE.json)。
+
+
 
 > **基础安全修订 / Included security revision:** `security-hardening-20261117` · ALPHA 1.0。399 项回归通过；见 [安全更新](SECURITY_REVISION_20261117.md)、[安全边界](SECURITY.md) 和 [构建记录](BUILD_PROVENANCE.json)。
 

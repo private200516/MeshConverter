@@ -1,5 +1,5 @@
 {
-  "revision": "logo-security-release-20261117",
+  "revision": "logo-refinement-release-20261117",
   "public_version": "ALPHA 1.0",
   "author": "private0516",
   "date": "2026-11-17",
@@ -31,7 +31,7 @@
     "texture_installed_exe_bgsm_bgem_cli": true,
     "texture_preview_nested_job": true
   },
-  "logo_png_sha256": "bb5462c24e73a18ba7fac4e9087daca464ae6f3116429be37c665b481089810d",
+  "logo_png_sha256": "31d8430db3b46afc4d30f1608935018eb7ef439021d8ff3c6a032c6201ddc35c",
   "synthetic_fixtures_only": true,
   "in_game_revalidated": false,
   "external_certification": false

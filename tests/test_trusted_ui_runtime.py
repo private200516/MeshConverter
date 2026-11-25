@@ -1,4 +1,7 @@
 """Socket isolation and exact-document routing for native runtime smoke tests."""
+import gzip
+from http.client import HTTPConnection
+from urllib.parse import urlsplit
 from pathlib import Path
 import socket
 import tempfile
@@ -27,6 +30,43 @@ class TrustedUiRuntimeTests(unittest.TestCase):
                     self.assertEqual(response.read(), self.page.read_bytes())
                     self.assertIn("connect-src 'none'", response.headers['Content-Security-Policy'])
                     self.assertEqual(response.headers['Cache-Control'], 'no-store')
+
+    def test_webview_can_finish_reading_before_socket_reuse(self):
+        with TrustedUiServer(self.page, port=0) as server:
+            route = urlsplit(server.url)
+            client = HTTPConnection(route.hostname, route.port, timeout=3)
+            try:
+                client.request('GET', route.path)
+                page = client.getresponse()
+                self.assertEqual(page.version, 11)
+                self.assertEqual(page.read(), self.page.read_bytes())
+                connection = client.sock
+                self.assertIsNotNone(connection)
+                client.request('HEAD', route.path)
+                head = client.getresponse()
+                self.assertEqual(head.status, 200)
+                self.assertEqual(head.read(), b'')
+                self.assertIs(client.sock, connection)
+            finally:
+                client.close()
+
+    def test_compressed_document_preserves_exact_content_and_trusted_headers(self):
+        original = b'<p>local data</p>' * 4000
+        self.page.write_bytes(original)
+        with TrustedUiServer(self.page, port=0) as server:
+            for accepted in ('gzip, deflate, br', 'gzip;q=0', 'identity'):
+                request = Request(server.url, headers={'Accept-Encoding': accepted})
+                with self.http.open(request, timeout=3) as response:
+                    body = response.read()
+                    self.assertEqual(int(response.headers['Content-Length']), len(body))
+                    self.assertIn("connect-src 'none'", response.headers['Content-Security-Policy'])
+                    if accepted.startswith('gzip,'):
+                        self.assertEqual(response.headers['Content-Encoding'], 'gzip')
+                        self.assertEqual(gzip.decompress(body), original)
+                        self.assertLess(len(body), len(original))
+                    else:
+                        self.assertIsNone(response.headers['Content-Encoding'])
+                        self.assertEqual(body, original)
 
     def test_nonce_route_and_host_header_are_both_required(self):
         with TrustedUiServer(self.page, port=0) as server:

@@ -5,12 +5,12 @@ External converted materials control appearance; runtime behavior is unverified.
 """
 import struct,hashlib,math
 from pathlib import Path
-from inspect_nif import Nif,Reader
+from inspect_nif import Nif,Reader,NODE_TYPES
 from convert_models import Writer,P,sized,LIGHT,COMMON_EXTRA_TYPES,validate_extra
 from skin_reference import match_skeleton
 from shader_flags import fo76_to_fo4
 SKIN_SHADER=bytes.fromhex('010000000b00000000000000ffffffff930240801100000000000000000000000000803f0000803f110000000000000000000000000000000000803f09000000030000000000803f000000000000803f0000803f0000803f0000803f0000803f00000000ffff7f7f00000000000000000000a040000080bf000080bf000080bf000080bf000080bf000080bf0000803f0000')
-ALLOWED={'NiNode','BSFadeNode','BSTriShape','BSSubIndexTriShape','BSSkin::Instance','BSSkin::BoneData','BSLightingShaderProperty','BSShaderTextureSet','BSEffectShaderProperty','NiAlphaProperty'}|COMMON_EXTRA_TYPES
+ALLOWED=NODE_TYPES|{'BSTriShape','BSSubIndexTriShape','BSSkin::Instance','BSSkin::BoneData','BSLightingShaderProperty','BSShaderTextureSet','BSEffectShaderProperty','NiAlphaProperty'}|COMMON_EXTRA_TYPES
 
 def finite(values, label):
  if not all(math.isfinite(v) for v in values):raise ValueError(label+' 含非有限数值')
@@ -120,7 +120,7 @@ def validate_weights(n,i,d,skin):
 
 def validate_graph(n,shapes,skins):
  nodes={}
- avtypes={'NiNode','BSFadeNode','BSTriShape','BSSubIndexTriShape'}
+ avtypes=NODE_TYPES|{'BSTriShape','BSSubIndexTriShape'}
  for i,t in enumerate(n.indices):
   typ=n.types[t]
   if typ in COMMON_EXTRA_TYPES:
@@ -131,12 +131,10 @@ def validate_graph(n,shapes,skins):
    ref(n,extra,COMMON_EXTRA_TYPES,'扩展属性')
   if d['ctrl']!=-1 or d['collision']!=-1:raise ValueError('含控制器或物理绑定，当前保留流程不支持')
   children=[]
-  if typ in ('NiNode','BSFadeNode'):
-   count=r.u()
-   if count>n.count:raise ValueError('节点子对象数量无效')
-   children=list(r.get('i'*count))
+  if typ in NODE_TYPES:
+   children=n.node_fields(r,typ)['children']
+   if len(children)>n.count:raise ValueError('节点子对象数量无效')
    for child in children:ref(n,child,avtypes,'子节点',True)
-   if r.p!=len(r.b):raise ValueError('节点含未解析字段')
   nodes[i]=[child for child in children if child!=-1]
  visited=set();active=set()
  def walk(i):
@@ -168,9 +166,11 @@ def effect(n,b,owners=None):
  color=r.read(16);scale_depth=r.read(8);textures=[r.s() for _ in range(4)];envscale=r.read(4)
  reflectance,lighting=r.s(),r.s();emittance=r.get('3f');gradient=r.s();luminance=r.get('4f')
  finite(struct.unpack('<4f',uv)+struct.unpack('<4f',falloff)+struct.unpack('<4f',color)+struct.unpack('<2f',scale_depth)+struct.unpack('<f',envscale)+(refraction,)+emittance+luminance,'特效参数')
- if r.p!=len(b) or refraction or reflectance or lighting or gradient or any(emittance):raise ValueError('该特效含尚未映射的 FO76 专属参数')
+ if r.p!=len(b) or (refraction and flag1 & (1<<15)) or reflectance or lighting or gradient or any(emittance):raise ValueError('该特效含尚未映射的 FO76 专属参数')
  output=b[:12]+P('II',flag1,flag2)+uv+sized(texture)+clamp+falloff+color+scale_depth+b''.join(sized(t) for t in textures)+envscale
- return output,dict(flags=[flag1,flag2],source_texture=texture,omitted_fo76_luminance=list(luminance))
+ detail=dict(flags=[flag1,flag2],source_texture=texture,omitted_fo76_luminance=list(luminance))
+ if refraction:detail['inactive_fo76_refraction_power']=refraction
+ return output,detail
 
 def route(src):
  n=_nif if _nif is not None else Nif(src)
@@ -209,7 +209,7 @@ def convert(src,dest,collision=False,dry_run=False,reference_root=None,_nif=None
  unassigned=sum(d.get('segments',{}).get('unassigned_triangles',0) for _,d in shapes)
  if unassigned:notes.append(f'源模型有 {unassigned} 个三角形未分配到分区；原样保留，未自动重分区。')
  for i,(typ,b) in enumerate(w.blocks.copy()):
-  if typ in ('NiNode','BSFadeNode','BSTriShape','BSSubIndexTriShape'):
+  if typ in NODE_TYPES or typ in ('BSTriShape','BSSubIndexTriShape'):
    d=n.av(Reader(b))
    if d['ctrl']!=-1 or d['collision']!=-1:raise ValueError('含控制器或物理绑定，当前保留流程不支持')
    finite(d['transform'],'节点变换')
@@ -261,7 +261,7 @@ def convert(src,dest,collision=False,dry_run=False,reference_root=None,_nif=None
   od=shape(out,i)
   if out.blocks[i][od['dataoffset']:]!=n.blocks[i][d['dataoffset']:]:raise ValueError('几何、蒙皮或分区数据改变')
  for i,t in enumerate(n.indices):
-  if n.types[t] in COMMON_EXTRA_TYPES|{'NiNode','BSFadeNode','BSSkin::Instance','BSSkin::BoneData','NiAlphaProperty'}:
+  if n.types[t] in COMMON_EXTRA_TYPES|NODE_TYPES|{'BSSkin::Instance','BSSkin::BoneData','NiAlphaProperty'}:
    if out.blocks[i]!=n.blocks[i]:raise ValueError('节点或绑定数据改变')
  info.update(input=str(src),output=str(dest),source_sha256=n.source_sha256,geometry_bytes_preserved=True,skin_and_segments_preserved=True)
  return info

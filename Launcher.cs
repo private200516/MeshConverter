@@ -1,5 +1,5 @@
 // Plain .NET launcher; no embedded archive, updater or elevation.
-// GPL-3.0. See LICENSE. Author: private0516.
+// GPL-3.0. See LICENSE. Author: Private0516.
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -12,12 +12,12 @@ using System.Windows.Forms;
 
 [assembly: AssemblyTitle("Mesh Converter")]
 [assembly: AssemblyDescription("Transparent Python application launcher")]
-[assembly: AssemblyCompany("private0516")]
-[assembly: AssemblyProduct("Mesh Converter ALPHA 1.0")]
-[assembly: AssemblyCopyright("private0516")]
+[assembly: AssemblyCompany("Private0516")]
+[assembly: AssemblyProduct("Mesh Converter 1.0")]
+[assembly: AssemblyCopyright("Private0516")]
 [assembly: AssemblyVersion("1.0.0.0")]
 [assembly: AssemblyFileVersion("1.0.0.0")]
-[assembly: AssemblyInformationalVersion("ALPHA 1.0")]
+[assembly: AssemblyInformationalVersion("1.0")]
 
 internal static class Launcher
 {
@@ -34,10 +34,11 @@ internal static class Launcher
         {
             string appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             string logDirectory = Path.Combine(appData, "private0516", "MeshConverter", "logs");
-            log = new LauncherLog(logDirectory, cli);
+            bool retainLog = !(cli && args[0] == "--cli" && LauncherLog.ReportDisabled(args));
+            log = new LauncherLog(logDirectory, cli, retainLog);
             if (args.Length > 0 && (args[0] == "--help" || args[0] == "-h"))
             {
-                log.Write("Mesh Converter ALPHA 1.0 / private0516", false);
+                log.Write("Mesh Converter 1.0 / Private0516", false);
                 log.Write("No arguments: open the desktop UI.", false);
                 log.Write("--cli [arguments]       Run the batch converter; use --cli --help.", false);
                 log.Write("--inventory [arguments] Run the read-only corpus inventory.", false);
@@ -60,7 +61,7 @@ internal static class Launcher
             string script = Path.Combine(root, "app", scriptName);
             if (!File.Exists(python) || !File.Exists(script))
                 throw new FileNotFoundException("The program folder is incomplete. Keep MeshConverter.exe together with app, runtime and vendor folders.");
-            log.Write("Mesh Converter ALPHA 1.0 - transparent folder distribution", false);
+            log.Write("Mesh Converter 1.0 - transparent folder distribution", false);
             log.Write("Runtime: " + python, false);
             log.Write("Entry: " + scriptName, false);
             int code = LauncherProcess.Run(root, python, script, args, skip, log, null);
@@ -91,38 +92,48 @@ internal sealed class LauncherLog : IDisposable
     private bool capped;
     internal readonly string PathName;
 
-    internal LauncherLog(string directory, bool consoleOutput)
+    internal static bool ReportDisabled(string[] arguments)
     {
+        foreach (string argument in arguments)
+        {
+            if (argument == "--") break;
+            if (argument == "--no-report") return true;
+        }
+        return false;
+    }
+
+    internal LauncherLog(string directory, bool consoleOutput, bool retain = true)
+    {
+        console = consoleOutput;
+        if (!retain) return;
         Directory.CreateDirectory(directory);
         PathName = Path.Combine(directory, "launcher-" + DateTime.UtcNow.ToString("yyyyMMdd-HHmmss-fff") + "-" + Process.GetCurrentProcess().Id + "-" + Guid.NewGuid().ToString("N") + ".log");
         stream = new FileStream(PathName, FileMode.CreateNew, FileAccess.Write, FileShare.Read);
-        console = consoleOutput;
     }
 
     internal void Write(string value, bool error)
     {
         if (value == null) return;
         if (value.Length > MaxRecordChars) value = value.Substring(0, MaxRecordChars) + " [record truncated]";
-        byte[] bytes = Encoding.UTF8.GetBytes(value + Environment.NewLine);
         lock (sync)
         {
-            if (capped) return;
-            // Reserve space for one terminal marker, including its newline.
+            if (console)
+            {
+                try { if (error) Console.Error.WriteLine(value); else Console.Out.WriteLine(value); }
+                catch (IOException) { }
+            }
+            if (stream == null || capped) return;
+            byte[] bytes = Encoding.UTF8.GetBytes(value + Environment.NewLine);
+            // Reserve room to record why the file ends. CLI progress stays live.
             if (written + bytes.Length > MaxLogBytes - 128)
             {
-                value = "[launcher log limit reached; further output is drained without retention]";
-                bytes = Encoding.UTF8.GetBytes(value + Environment.NewLine);
+                bytes = Encoding.UTF8.GetBytes("[launcher log limit reached; further output is drained without retention]" + Environment.NewLine);
                 capped = true;
             }
             try { stream.Write(bytes, 0, bytes.Length); stream.Flush(); }
             catch (IOException) { capped = true; }
             catch (UnauthorizedAccessException) { capped = true; }
             written += bytes.Length;
-            if (console)
-            {
-                try { if (error) Console.Error.WriteLine(value); else Console.Out.WriteLine(value); }
-                catch (IOException) { }
-            }
         }
     }
 
@@ -156,7 +167,7 @@ internal sealed class LauncherLog : IDisposable
         catch (ObjectDisposedException) { }
     }
 
-    public void Dispose() { lock (sync) { capped = true; stream.Dispose(); } }
+    public void Dispose() { lock (sync) { capped = true; if (stream != null) stream.Dispose(); } }
 }
 
 internal sealed class LauncherJob : IDisposable

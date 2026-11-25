@@ -33,6 +33,10 @@ if mode=='probe':
     out.write_text(json.dumps({'argv':sys.argv,'isolated':sys.flags.isolated,
         'ignore_environment':sys.flags.ignore_environment,'no_user_site':sys.flags.no_user_site,
         'path':sys.path,'cwd':os.getcwd(),'env':dict(os.environ)},ensure_ascii=False),encoding='utf-8')
+elif mode=='echo':
+    print('asset-progress',flush=True)
+    print('asset-warning',file=sys.stderr,flush=True)
+    out.write_text('done',encoding='utf8')
 elif mode=='long':
     for stream in (sys.stdout,sys.stderr):
         for _ in range(2048): stream.write('x'*8192)
@@ -235,6 +239,20 @@ class LauncherSecurityTests(unittest.TestCase):
             data = json.loads(output.read_text(encoding='utf-8'))
             self.assertEqual(Path(data['argv'][0]).name, expected)
             self.assertEqual(data['argv'][3:], ['中文 "\\'])
+
+    def test_no_report_keeps_cli_progress_without_a_launcher_transcript(self):
+        local = Path(os.environ['LOCALAPPDATA']) / 'private0516' / APP
+        if IS_MESH:
+            local = local / 'logs'
+        result = self.test_dir / 'result.txt'
+        process = subprocess.Popen([str(self.launcher), '--cli', 'echo', str(result), '--no-report'],
+                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = process.communicate(timeout=30)
+        self.assertEqual(process.returncode, 0)
+        self.assertEqual(result.read_text(encoding='utf8'), 'done')
+        self.assertIn(b'asset-progress', stdout)
+        self.assertIn(b'asset-warning', stderr)
+        self.assertFalse(list(local.glob(f'launcher-*-{process.pid}-*.log')))
 
     def test_launcher_manifest_requests_current_user_privileges(self):
         candidates = [REPO/'app.manifest', REPO/'launcher.manifest', REPO/'launcher-source'/'app.manifest']

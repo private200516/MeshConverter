@@ -10,6 +10,7 @@ import struct
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from convert_models import Writer, P, IDENTITY, sized, COMMON_EXTRA_TYPES, convert as static_convert
@@ -17,6 +18,8 @@ from convert_preserved import convert as preserved_convert, shape, validate_weig
 from convert_reverse import convert as reverse_convert
 from convert_animated import convert as animated_convert
 from inspect_nif import Nif, Reader
+from converter import convert_file
+from app import Api
 
 
 def metadata(writer, kind):
@@ -27,6 +30,8 @@ def metadata(writer, kind):
         return P('i6f', name, 1, 2, 3, 4, 5, 6)
     if kind == 'BSInvMarker':
         return P('i3Hf', name, 1, 2, 3, 1.25)
+    if kind == 'BSBehaviorGraphExtraData':
+        return P('iiB', name, writer.sid(r'GenericBehaviors\Example\Example.hkx'), 0)
     if kind == 'NiStringExtraData':
         return P('ii', name, writer.sid('preserved value'))
     if kind == 'NiStringsExtraData':
@@ -154,6 +159,7 @@ class CommonMetadataTests(unittest.TestCase):
             'NiStringExtraData': lambda b: b[:4] + P('i', 10000),
             'NiStringsExtraData': lambda b: b[:-1],
             'BSInvMarker': lambda b: b + b'unknown',
+            'BSBehaviorGraphExtraData': lambda b: b[:-1] + b'\x02',
         }
         for version, convert in ((155, preserved_convert), (130, reverse_convert)):
             for kind, corrupt in mutations.items():
@@ -164,6 +170,62 @@ class CommonMetadataTests(unittest.TestCase):
                     fixture(src, version, [kind], mutation=mutate)
                     with self.assertRaises(ValueError):
                         convert(src, dst, collision=False)
+                    self.assertFalse(dst.exists())
+
+    def test_behavior_graph_reports_exact_external_dependency_in_both_directions(self):
+        with tempfile.TemporaryDirectory() as td:
+            src, fo4, fo76 = [Path(td) / folder / 'sample.nif'
+                              for folder in ('source', 'fo4', 'fo76')]
+            fixture(src, kinds=['BSBehaviorGraphExtraData'], animated=True)
+            for source, target, direction in ((src, fo4, '76-to-4'), (fo4, fo76, '4-to-76')):
+                result = convert_file(source, target, direction=direction, collision=False)
+                self.assertEqual(result['external_behavior_graphs'],
+                                 [dict(path=r'GenericBehaviors\Example\Example.hkx', controls_base_skeleton=False)])
+                self.assertTrue(any('HKX' in note for note in result['notes'] if isinstance(note, str)))
+                self.assertFalse(result['game_verified'])
+
+    def test_statically_reordered_child_keeps_its_graph_and_shows_queue_warning(self):
+        with tempfile.TemporaryDirectory() as td:
+            src, dst = (Path(td) / folder / 'sample.nif' for folder in ('source', 'output'))
+            def attach_to_shape(w, extras):
+                graph = extras[0]
+                w.set(0, w.av('Root', IDENTITY) + P('Ii', 1, 1))
+                w.set(1, w.av('Triangle', IDENTITY, extra=[graph]) + w.blocks[1][1][72:])
+            fixture(src, kinds=['BSBehaviorGraphExtraData'], mutation=attach_to_shape)
+            before = Nif(src)
+            api=Api()
+            row=dict(name=src.name, path=str(src), status='等待扫描')
+            api._update(input=str(src.parent), output=str(dst.parent), rows=[row])
+            def convert_from_queue(path, target, collision, dry):
+                data=convert_file(path,target,collision=collision,dry_run=dry,_staged=True)
+                return dict(ok=True,data=data)
+            with patch.object(api, '_call', side_effect=convert_from_queue):
+                for mode in ('scan','convert'):
+                    api._process_row(row,mode,False,dst.parent)
+                    snap=api.snapshot()
+                    self.assertIn('Target HKX required', snap['rows'][0]['detail'])
+                    self.assertTrue(any('Example.hkx' in line['message'] and line['level']=='warn'
+                                        for line in snap['logs']))
+            after=Nif(dst.parent/'meshes'/dst.name)
+            old=before.av(Reader(before.blocks[1]))['extra'][0]
+            mesh=next(d for d in after.inspect() if d['name']=='Triangle')
+            new=mesh['extra'][0]
+            self.assertNotEqual(old,new)
+            self.assertEqual(after.types[after.indices[new]],'BSBehaviorGraphExtraData')
+            self.assertEqual(after.blocks[new],before.blocks[old])
+            self.assertEqual(after.strings[:len(before.strings)],before.strings)
+
+    def test_behavior_graph_requires_a_local_relative_hkx_reference(self):
+        with tempfile.TemporaryDirectory() as td:
+            src, dst = (Path(td) / folder / 'sample.nif' for folder in ('source', 'output'))
+            for name in (r'..\outside.hkx', '//server/share/file.hkx', 'C:/path/file.hkx',
+                         'path/NUL.hkx', 'path/file:stream.hkx', 'path/other.nif', ''):
+                with self.subTest(name=name):
+                    def mutate(w, extras):
+                        w.set(extras[0], P('iiB', w.sid('BGED'), w.sid(name), 1))
+                    fixture(src, kinds=['BSBehaviorGraphExtraData'], mutation=mutate)
+                    with self.assertRaisesRegex(ValueError, 'HKX'):
+                        convert_file(src, dst, collision=False)
                     self.assertFalse(dst.exists())
 
     def test_opaque_binary_payload_remains_unsupported(self):

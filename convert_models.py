@@ -1,8 +1,8 @@
 # GPL-3.0. See LICENSE and THIRD_PARTY.md.
 """Restricted FO76 static BSTriShape -> FO4 converter. Never overwrites input."""
 import sys,struct,json,math,hashlib
-from pathlib import Path
-from inspect_nif import Nif,Reader,MAX_TABLE_ITEMS
+from pathlib import Path, PureWindowsPath
+from inspect_nif import Nif,Reader,MAX_TABLE_ITEMS,NODE_TYPES
 from havok.bhk_autopack import pack_compressed_mesh
 from havok.bhk_autounpack import parse_bytes
 P=lambda f,*a:struct.pack('<'+f,*a)
@@ -46,11 +46,11 @@ def geometry(n,d):
  ts=list(struct.iter_unpack('<3H',b[off+d['vertices']*stride:off+d['datasize']]))
  assert len(ts)==d['triangles'] and all(max(t)<len(vs) for t in ts)
  return vs,ts
-NODE_TYPES={'NiNode','BSFadeNode','BSValueNode'}
 SHAPE_TYPES={'BSTriShape','BSSubIndexTriShape'}
 EXTRA_TYPES={'BSXFlags','BSBound','BSInvMarker','NiStringExtraData','NiStringsExtraData',
  'NiIntegerExtraData','NiBooleanExtraData','NiFloatExtraData','NiBinaryExtraData',
- 'BSConnectPoint::Parents','BSConnectPoint::Children','BSFurnitureMarker','BSFurnitureMarkerNode'}
+ 'BSConnectPoint::Parents','BSConnectPoint::Children','BSFurnitureMarker','BSFurnitureMarkerNode',
+ 'BSBehaviorGraphExtraData'}
 # These shared layouts are fully parsed before copying. BinaryExtraData is an
 # opaque payload and does not gain skin/animation/reverse support from this set.
 COMMON_EXTRA_TYPES=EXTRA_TYPES-{'NiBinaryExtraData'}
@@ -62,8 +62,28 @@ def extra_count(r,minimum_entry_size):
  if count>MAX_TABLE_ITEMS or count>(len(r.b)-r.p)//minimum_entry_size:raise ValueError('Extra-data array count exceeds safety limit or remaining payload')
  return count
 
+def behavior_graph(n, b):
+ """Decode a virtual Meshes-relative HKX reference without resolving it on disk."""
+ r=Reader(b)
+ name_id,path_id,controls=r.get('iiB')
+ n.name(name_id)
+ path=n.name(path_id)
+ if len(path)>32767:
+  raise ValueError('HKX behavior graph path exceeds the Windows path limit')
+ parts=path.replace('\\','/').split('/')
+ if (r.p!=len(b) or controls not in (0,1) or
+     not path.lower().endswith('.hkx') or
+     any(ord(char)<32 or char in '<>:"|?*' for char in path) or
+     any(not part or part in ('.','..') or part.endswith((' ','.'))
+         or PureWindowsPath(part).is_reserved() for part in parts)):
+  raise ValueError('Invalid Meshes-relative HKX behavior graph reference or flag')
+ return path, bool(controls)
+
 def validate_extra(n,typ,b):
  """Only copy extras whose FO4/FO76 layouts and references are understood."""
+ if typ=='BSBehaviorGraphExtraData':
+  behavior_graph(n,b)
+  return
  r=Reader(b);n.name(r.i())
  if typ in ('BSXFlags','NiIntegerExtraData'):r.u()
  elif typ=='NiStringExtraData':n.name(r.i())
@@ -138,7 +158,7 @@ def convert(src,dest,material_prefix=None,collision=True,dry_run=False,_nif=None
    sh,detail=effect(n,n.blocks[old],[d]);sh=P('i',w.sid(material))+sh[4:]
    notes.append(detail);return w.add(typ,sh)
   raise ValueError('Unsupported shader: '+typ)
- def visit(old):
+ def visit(old,camera_facing=False):
   if old==-1:return -1
   if old in active:raise ValueError('Scene graph contains a cycle')
   if old in mapping and old!=source_root:return mapping[old]
@@ -151,18 +171,16 @@ def convert(src,dest,material_prefix=None,collision=True,dry_run=False,_nif=None
   extras=[extra(i) for i in d['extra']]
   av=w.av(d['name'],d['transform'],extra=extras,flags=d['flags'])
   if typ in NODE_TYPES:
-   r=Reader(n.blocks[old]);n.av(r);children=list(r.array('i',r.u()));suffix=r.read(len(r.b)-r.p)
-   if typ=='BSValueNode':
-    if len(suffix)!=5:raise ValueError('Invalid BSValueNode value/flags payload')
-   elif suffix:raise ValueError('Unparsed node fields: '+typ)
+   children=d['children'];suffix=n.blocks[old][d['node_suffix_offset']:]
    converted=[]
    for child in children:
     if child!=-1:
      if child in parents:raise ValueError('Multiple parent nodes are not supported by static collision rebuilding')
      parents[child]=old
-    converted.append(visit(child))
+    converted.append(visit(child,camera_facing or typ=='NiBillboardNode'))
    w.set(idx,av+P('I',len(converted))+b''.join(P('i',c) for c in converted)+suffix)
   else:
+   if collision and camera_facing:raise ValueError('朝向相机的网格无法生成固定碰撞；可选择仅转换模型')
    validated=parse_shape(n,old)
    if validated['skin']!=-1:raise ValueError('Skinned geometry requires the skin-preserving route')
    shidx=shader(d['shader'],d);alpha=-1
@@ -176,6 +194,8 @@ def convert(src,dest,material_prefix=None,collision=True,dry_run=False,_nif=None
    shapes.append((old,idx,d))
   active.remove(old);return idx
  visit(source_root)
+ if any(n.types[t]=='BSBehaviorGraphExtraData' and i not in mapping for i,t in enumerate(n.indices)):
+  raise ValueError('Unattached behavior graph would be lost')
  unreachable=[i for i,d in ds.items() if d['type'] in NODE_TYPES|SHAPE_TYPES and i not in mapping]
  if unreachable:raise ValueError('Unreachable scene nodes would be lost: '+str(unreachable[:8]))
  verts=[];faces=[];seen={};degenerate=0
@@ -228,5 +248,11 @@ def convert(src,dest,material_prefix=None,collision=True,dry_run=False,_nif=None
  for old,idx in mapping.items():
   if old in ds and ds[old]['type'] in NODE_TYPES|SHAPE_TYPES:
    if od[idx]['transform']!=ds[old]['transform'] or od[idx]['flags']!=ds[old]['flags']:raise ValueError('Scene transform or flags changed')
+   if ds[old]['type'] in NODE_TYPES:
+    target,source=od[idx],ds[old]
+    children=[mapping[child] if child!=-1 else -1 for child in source['children']]
+    if (target['type']!=source['type'] or target['children']!=children or
+        out.blocks[idx][target['node_suffix_offset']:]!=n.blocks[old][source['node_suffix_offset']:]):
+     raise ValueError('Scene node type, children or subclass data changed')
  info.update(input=str(src),output=str(dest),source_sha256=n.source_sha256,source_blocks=n.count,output_blocks=len(w.blocks),materials=[s for s in w.strings if s.lower().endswith(('.bgsm','.bgem'))])
  return info

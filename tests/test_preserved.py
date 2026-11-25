@@ -16,6 +16,7 @@ from shader_flags import fo4_to_fo76, fo76_to_fo4
 
 class InMemoryNif:
     av = Nif.av
+    node_fields = Nif.node_fields
     net = Nif.net
     name = Nif.name
     ref = Nif.ref

@@ -5,6 +5,7 @@ methods are served by HTTP. This is a local patch, not an upstream certification
 """
 from __future__ import annotations
 
+import gzip
 import hashlib
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import json
@@ -68,12 +69,13 @@ class TrustedUiServer:
     """
     def __init__(self, ui_path, *, port=42001):
         page = Path(ui_path).read_bytes()
+        compressed = gzip.compress(page, compresslevel=3, mtime=0) if len(page) >= 16384 else None
         if isinstance(port, bool) or not isinstance(port, int) or not 0 <= port <= 65535:
             raise ValueError('The local UI port must be an integer from 0 to 65535.')
         route = '/' + secrets.token_hex(24) + '/ui.html'
 
         class Handler(BaseHTTPRequestHandler):
-            protocol_version = 'HTTP/1.0'
+            protocol_version = 'HTTP/1.1'
 
             def do_GET(self):
                 self._page(False)
@@ -85,9 +87,15 @@ class TrustedUiServer:
                 if self.headers.get_all('Host', []) != [host] or self.path != route:
                     self.send_error(404)
                     return
+                encodings = self.headers.get('Accept-Encoding', '').lower().split(',')
+                use_gzip = compressed is not None and any(value.strip() == 'gzip' for value in encodings)
+                body = compressed if use_gzip else page
                 self.send_response(200)
                 self.send_header('Content-Type', 'text/html; charset=utf-8')
-                self.send_header('Content-Length', str(len(page)))
+                self.send_header('Content-Length', str(len(body)))
+                self.send_header('Vary', 'Accept-Encoding')
+                if use_gzip:
+                    self.send_header('Content-Encoding', 'gzip')
                 self.send_header('Cache-Control', 'no-store')
                 self.send_header('X-Content-Type-Options', 'nosniff')
                 self.send_header('X-Frame-Options', 'DENY')
@@ -103,7 +111,11 @@ class TrustedUiServer:
                     "form-action 'none'; frame-ancestors 'none'")
                 self.end_headers()
                 if not head_only:
-                    self.wfile.write(page)
+                    self.connection.settimeout(8.0)
+                    try:
+                        self.wfile.write(body)
+                    finally:
+                        self.connection.settimeout(2.0)
 
             def log_message(self, format, *args):
                 # Do not persist the per-launch document path in access logs.

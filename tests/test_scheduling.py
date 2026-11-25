@@ -40,7 +40,7 @@ class SchedulingTests(unittest.TestCase):
             self.assertEqual([r['name'] for r in report['files']],[f'{i}.nif' for i in range(12)])
             for i,row in enumerate(api.state['rows']):
                 self.assertEqual(row['result']['input'],str(source/f'{i}.nif'))
-                self.assertEqual((dest/f'{i}.nif').read_text(),str(i))
+                self.assertEqual((dest/'meshes'/f'{i}.nif').read_text(),str(i))
             self.assertEqual(api.state['completed'],12)
             self.assertFalse(list(root.rglob('.nifshift-*')))
 
@@ -66,11 +66,11 @@ class SchedulingTests(unittest.TestCase):
             self.assertFalse(any(row['status'] in ('完成','失败') for row in api.state['rows']))
             self.assertGreaterEqual(api.state['completed'],1);self.assertLessEqual(api.state['completed'],2)
             self.assertTrue(api.state['report'])
-            report_path=Path(api.state['report']);self.assertTrue(report_path.is_file());self.assertEqual(report_path.parent,dest)
+            report_path=Path(api.state['report']);self.assertTrue(report_path.is_file());self.assertEqual(report_path.parent,dest/'reports')
             report=json.loads(report_path.read_text(encoding='utf8'))
             self.assertTrue(report['cancelled']);self.assertEqual(api.state['completed'],len(report['files']))
             self.assertTrue(all(record['name'] in {src.name for src in sources} and record['path']==str(source/record['name']) for record in report['files']))
-            self.assertFalse(list(dest.glob('*.nif')));self.assertFalse(list(root.rglob('.nifshift-*')))
+            self.assertFalse(list(dest.rglob('*.nif')));self.assertFalse(list(root.rglob('.nifshift-*')))
             self.assertFalse(api._workers)
             self.assertEqual({str(src):hashlib.sha256(src.read_bytes()).hexdigest() for src in sources},source_hashes)
 
@@ -80,9 +80,9 @@ class SchedulingTests(unittest.TestCase):
             api=Api();api.configure(source,dest)
             row=dict(path=str(source/'a.nif'),name='a.nif',size=1,status='可转换',supported=True,detail='')
             Path(row['path']).write_bytes(b'synthetic source for mocked conversion')
-            (dest/'a.nif').write_bytes(b'original')
+            (dest/'meshes').mkdir();(dest/'meshes'/'a.nif').write_bytes(b'original')
             with patch.object(api,'_call') as call:api._process_row(row,'convert',False,dest)
-            call.assert_not_called();self.assertEqual((dest/'a.nif').read_bytes(),b'original')
+            call.assert_not_called();self.assertEqual((dest/'meshes'/'a.nif').read_bytes(),b'original')
             self.assertEqual(row['status'],'跳过')
 
     def test_parse_and_hash_use_one_source_read_per_conversion(self):

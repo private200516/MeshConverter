@@ -1,8 +1,10 @@
-# MeshConverter · ALPHA 1.0
+# Mesh Converter 1.0
 
 <p><img src="assets/toolkit-logo.png" width="96" alt="76 Converter Toolkit logo"></p>
 
-> **当前版本 / Current revision:** `logo-refinement-release-20261117` · ALPHA 1.0。新 Logo 与安全加固，399 项回归通过；见 [本轮更新](LOGO_REFINEMENT_20261117.md)、[安全边界](SECURITY.md) 和 [构建记录](BUILD_PROVENANCE.json)。
+> **正式版 1.0 / Release 1.0**　选择 Mod 根目录，单个 NIF 或嵌套目录均按原 meshes 路径导出。设置可关闭转换报告，实时日志继续显示。
+>
+> Select the shared mod root to preserve the original meshes path, even for a single NIF. Conversion reports are optional and live progress stays available. [测试记录 / Validation](SECURITY_VALIDATION.json)
 
 
 
@@ -12,13 +14,13 @@
 
 > 历史记录：较早的 runtime-motion 更新共通过 315 项测试，保留在 [VALIDATION_20261117.md](VALIDATION_20261117.md) 供追溯；该动效阶段采用上方的 323 项验证；当前安全修订结果以上方链接为准。下文“本次整理／未运行”等陈述属于 10 月源码发布阶段的历史说明。
 
-在本地转换受支持的 Fallout 76 BS155 ↔ Fallout 4 BS130 NIF 结构。项目代码采用 GPL-3.0；作者为 private0516。原项目使用 GPT-6 Astra 辅助开发，代码与界面包含 AI 生成内容。本项目不代表 Bethesda、OpenAI 或依赖项目背书。
+在本地转换受支持的 Fallout 76 BS155 ↔ Fallout 4 BS130 NIF 结构。项目代码采用 GPL-3.0；作者为 Private0516。原项目使用 GPT-6 Astra 辅助开发，代码与界面包含 AI 生成内容。本项目不代表 Bethesda、OpenAI 或依赖项目背书。
 
 这是完整的源代码开发包，包含原包的 `ui.html`、字体、图标及救护车线框界面资源；这些资源的公开发布已获用户明确授权；字体与线框资源保留经核对的原始字节，图标更新为本轮作者提供的 Toolkit Logo，`ui.html` 已纳入本轮动效更新。包内没有预编译产品 EXE、Python runtime 或安装后的 vendor 依赖，也不提供用于转换的游戏样本或游戏资源库。第三方组件仍适用各自许可。
 
 ## Windows 下载
 
-[MeshConverter.zip](https://github.com/private200516/MeshConverter/raw/refs/heads/main/downloads/MeshConverter.zip) · [SHA256 校验文件](downloads/MeshConverter.zip.sha256)
+[Windows 下载 / Release 1.0](https://github.com/private200516/MeshConverter/releases/tag/v1.0) · [SHA256 校验文件](https://github.com/private200516/MeshConverter/releases/download/v1.0/SHA256SUMS.txt)
 
 下载后先核对 ZIP 的 SHA256，再完整解压，并保留包内配套目录。Windows 分发包与源码开发包分别审核，文件布局以下载包内说明为准；下文的源码环境说明不描述 ZIP 内的组件。
 
@@ -45,7 +47,7 @@ py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -B -X utf8 .\app.py
 ```
 
-选择转换方向、输入目录和独立输出目录，再扫描并转换。带蒙皮的输入应选择匹配的目标骨架参考。救护车线框是界面资源，不是当前输入 NIF 的预览。完整保留逐文件结果和警告；本次没有重新运行此源码入口或验收 GUI。
+选择 NIF 文件或目录，指定与 Texture Converter 共用的 Mod 根目录，再扫描并转换。例如单独选择 `FO76/meshes/setdressing/shovel01.nif` 并导出到 `MyMod`，会得到 `MyMod/meshes/setdressing/shovel01.nif`。打散存放、没有 `meshes` 上级目录的文件，采用所选输入目录内的相对路径。带蒙皮的输入可选择相应的目标骨架。
 
 ## CLI
 
@@ -57,7 +59,7 @@ py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -B -X utf8 .\batch_nif.py '..\assets-owned\mesh4' '..\results\mesh-4-to-76' --direction 4-to-76 --no-collision
 ```
 
-`--preflight` 不写 NIF 输出，但会写 JSON 报告；它不是零写入操作。`--no-collision` 明确关闭碰撞输出，不能据此声称物理效果保留。带蒙皮的输入还需要匹配目标游戏、角色家族及第一/第三人称变体的骨架参考，可用 `--reference` 指定目标 Meshes 目录或 `skeleton.nif`。
+默认保存转换报告到所选根目录下的 `reports/mesh_*.json`。可在界面关闭报告，或在命令行传入 `--no-report`。与 `--preflight` 同用时只在终端显示检查结果。`--no-collision` 明确关闭碰撞输出，不能据此声称物理效果保留。带蒙皮的输入还需要匹配目标游戏、角色家族及第一/第三人称变体的骨架参考，可用 `--reference` 指定目标 Meshes 目录或 `skeleton.nif`。
 
 检查每个文件的 `passed`、`rejected`、`skipped` 和具体原因。已有目标文件会跳过；支持的二进制结构通过校验，不等于已在游戏内验证。此工具不转换 BGSM、BGEM 或 DDS，也不提供通用骨骼重定向、完整 Havok 物理迁移或任意 NIF 支持。
 

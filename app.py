@@ -5,7 +5,8 @@ from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 from pathlib import Path
 from converter import convert_file, DIRECTIONS, BUILD
 from corpus_inventory import nif_files
-from publication_guard import OutputBoundary, absolute_path
+from publication_guard import (absolute_path, default_mesh_report, mesh_export_boundary,
+                               mesh_source_root, plan_mesh_paths)
 
 def worker(conn,src,dest,collision,dry,direction='76-to-4',reference_root=None):
     try:
@@ -67,8 +68,9 @@ class Api:
         self._window=None;self._guard=threading.RLock();self._stop=threading.Event();self.busy=False;self.exit_allowed=False
         self._logs=deque(maxlen=2000);self._log_id=0
         self._process=None;self._connection=None;self._workers={};self._batch_started=None;self._batch_elapsed=0.0
+        self._batch_source_root=None
         self._rows_identity=None;self._rows_count=0;self._status_counts=Counter();self._rows_revision=0
-        self.state={'phase':'idle','input':'','output':'','reference':'','direction':'76-to-4','rows':[],'completed':0,'message':'选择源模型目录与独立输出目录','report':'','build':BUILD}
+        self.state={'phase':'idle','input':'','output':'','reference':'','direction':'76-to-4','rows':[],'completed':0,'message':'选择源模型目录与独立输出目录','report':'','write_report':True,'build':BUILD}
     def _index_rows(self):
         """Rebuild only when replacing the queue; per-file changes use _change_row."""
         rows=self.state['rows']
@@ -125,8 +127,7 @@ class Api:
             if self.busy:return {'error':'任务进行中，请先取消'}
             try:
                 a=absolute_path(source);b=absolute_path(dest)
-                if not a.is_dir():return {'error':'源目录不存在'}
-                OutputBoundary(b,a)
+                mesh_export_boundary(b,mesh_source_root(a))
             except (OSError,ValueError) as error:return {'error':str(error)}
             self.state.update(input=str(a),output=str(b),rows=[],phase='idle',report='',completed=0)
             return {'ok':True}
@@ -146,34 +147,34 @@ class Api:
             self.state.update(direction=direction,rows=[],phase='idle',report='',completed=0)
             return {'ok':True}
     def choose(self,kind):
-        if kind not in ('input','output','reference','skeleton'):return {'error':'无效目录类型'}
+        if kind not in ('input','input_file','output','reference','skeleton'):return {'error':'无效目录类型'}
         if self.busy:return {'error':'任务进行中，请先取消'}
         import webview
-        result=self._window.create_file_dialog(webview.FileDialog.OPEN,file_types=('NIF files (*.nif)',),allow_multiple=False) if kind=='skeleton' else self._window.create_file_dialog(webview.FileDialog.FOLDER)
+        result=self._window.create_file_dialog(webview.FileDialog.OPEN,file_types=('NIF files (*.nif)',),allow_multiple=False) if kind in ('skeleton','input_file') else self._window.create_file_dialog(webview.FileDialog.FOLDER)
         if result:
             with self._guard:
                 # A dialog can return after another bridge thread started work.
                 if self.busy:return {'error':'任务进行中，请先取消'}
-                self.state['reference' if kind=='skeleton' else kind]=result[0];self.state['rows']=[];self.state['phase']='idle';self.state['report']=''
+                self.state[{'skeleton':'reference','input_file':'input'}.get(kind,kind)]=result[0];self.state['rows']=[];self.state['phase']='idle';self.state['report']=''
         return self.snapshot()
-    def start(self,kind,collision=True):
+    def start(self,kind,collision=True,write_report=True):
         with self._guard:
             if self.busy:return {'error':'任务已经在运行'}
             if kind not in ('scan','convert'):return {'error':'未知任务'}
             if type(collision) is not bool:return {'error':'碰撞选项必须为布尔值 / Collision must be a boolean'}
+            if type(write_report) is not bool:return {'error':'报告选项必须为布尔值 / Report option must be a boolean'}
             a=self.state['input'];b=self.state['output']
             if not a or not b:return {'error':'请先选择源目录和输出目录'}
             try:
                 pa=absolute_path(a);pb=absolute_path(b)
-                if not pa.is_dir():return {'error':'请选择互相独立的有效目录'}
-                OutputBoundary(pb,pa)
+                mesh_export_boundary(pb,mesh_source_root(pa))
             except (OSError,ValueError) as error:return {'error':str(error)}
             self.state.update(input=str(pa),output=str(pb))
             if kind=='convert' and self.state['phase']!='ready':return {'error':'请先扫描模型'}
             if kind=='convert' and bool(collision)!=self.state.get('scanned_collision',bool(collision)):
                 return {'error':'碰撞选项已改变，请重新扫描'}
             if kind=='scan':self.state['scanned_collision']=bool(collision)
-            self.busy=True;self._stop.clear();self._batch_started=time.monotonic();self._batch_elapsed=0.0;self.state.update(phase='scanning' if kind=='scan' else 'running',completed=0,report='')
+            self.busy=True;self._stop.clear();self._batch_started=time.monotonic();self._batch_elapsed=0.0;self.state.update(phase='scanning' if kind=='scan' else 'running',completed=0,report='',write_report=write_report)
             self._log('开始预扫描' if kind=='scan' else '开始批量转换')
             self._log('源目录：'+a);self._log('输出目录：'+b)
             threading.Thread(target=self._run,args=(kind,bool(collision)),daemon=True).start()
@@ -188,7 +189,7 @@ class Api:
             instance=self._workers.setdefault(ident,IsolatedWorker())
         request=dict(src=str(src),dest=str(dest),direction=self.state['direction'],
                      collision=collision,dry_run=dry,reference_root=self.state['reference'] or None,
-                     _staged=True,output_root=self.state['output'],source_root=self.state['input'])
+                     _staged=True,output_root=self.state['output'],source_root=str(self._batch_source_root or mesh_source_root(Path(self.state['input']))))
         return instance.call(request,self._stop)
     def _shutdown_worker(self):
         for instance in self._workers.values():instance.close()
@@ -201,17 +202,25 @@ class Api:
     def _process_row(self,row,kind,collision,dest):
         temp=None;boundary=None
         if self._stop.is_set():return None
-        src=Path(row['path']);target=dest/row['name']
-        self._change_row(row,status='扫描中' if kind=='scan' else '转换中')
+        src=Path(row['path'])
         self._update(message=row['name'])
         self._log(('检查模型：' if kind=='scan' else '处理模型：')+row['name'])
         if kind=='convert' and not row.get('supported'):
-            self._change_row(row,status='不支持')
-            self._log(row['name']+' · 不支持，已跳过','warn')
-            return dict(row)
+            status='跳过' if row['status']=='跳过' else '不支持'
+            self._change_row(row,status=status)
+            self._log(row['name']+' · '+status+' · '+row.get('detail',''),'warn')
+            return row
+        self._change_row(row,status='扫描中' if kind=='scan' else '转换中')
         try:
-            boundary=OutputBoundary(dest,self.state['input'])
+            base=self._batch_source_root or mesh_source_root(Path(self.state['input']))
+            boundary=mesh_export_boundary(dest,base)
             boundary.validate_source(src)
+            relative=row.get('output_relative')
+            if relative is None:
+                relative=plan_mesh_paths((src,),base,dest)[src][0]
+            if row.get('ambiguous'):
+                raise ValueError('多个源文件映射到同一路径 / Multiple sources map to '+str(relative))
+            target=dest/relative
             boundary.validate(target,must_be_absent=True)
             if kind=='convert':boundary.prepare_parent(target)
             temp=target.with_name('.nifshift-'+uuid.uuid4().hex+'.tmp')
@@ -228,22 +237,32 @@ class Api:
         changes={'status':('可转换' if kind=='scan' else '完成') if result['ok'] else ('跳过' if result.get('skip') else '已取消' if result.get('cancelled') else '不支持' if kind=='scan' else '失败'),
                  'detail':(result['data']['conversion_kind']+' · '+('结构检查通过' if kind=='scan' else '已写入并回读校验')) if result['ok'] else result['error']}
         if kind=='scan':changes['supported']=result['ok']
-        if result.get('data'):changes['result']=result['data']
+        if result.get('data'):
+            if kind=='convert' and self.state['write_report']:
+                changes['result']=result['data']
+            if result['data'].get('external_behavior_graphs'):
+                changes['detail']='需目标游戏 HKX / Target HKX required · '+changes['detail']
         self._change_row(row,**changes)
         self._log(row['name']+' · '+row['status']+' · '+row['detail'],'success' if result['ok'] else 'warn' if result.get('skip') or result.get('cancelled') else 'error')
         if result.get('ok'):
             data=result['data'];notes=data.get('warnings',[])+data.get('notes',[])
             for note in dict.fromkeys(str(note) if isinstance(note,str) else json.dumps(note,ensure_ascii=False) for note in notes):
                 self._log(row['name']+' · '+note,'warn')
-        return dict(row)
+        return row
     def _run(self,kind,collision):
+        save_report=kind=='convert' and self.state['write_report']
         records={}
         try:
             source=absolute_path(self.state['input']);dest=absolute_path(self.state['output'])
-            boundary=OutputBoundary(dest,source)
+            base=mesh_source_root(source)
+            self._batch_source_root=base
+            boundary=mesh_export_boundary(dest,base)
             if kind=='scan':
-                files=sorted(nif_files(source,stop=self._stop))
-                self._update(rows=[{'path':str(f),'name':str(f.relative_to(source)),'status':'等待扫描','size':f.lstat().st_size,'detail':''} for f in files])
+                targets=plan_mesh_paths(sorted(nif_files(source,stop=self._stop)),base,dest)
+                self._update(rows=[{'path':str(path),'name':str(path.relative_to(base)),
+                                    'output_relative':str(relative),'ambiguous':ambiguous,
+                                    'status':'等待扫描','size':path.lstat().st_size,'detail':''}
+                                   for path,(relative,ambiguous) in targets.items()])
             rows=self.state['rows']
             if not rows:self._update(message='目录中没有 NIF 模型',phase='idle');self._log('目录中没有 NIF 模型','warn');return
             width=self._parallelism(rows)
@@ -264,11 +283,12 @@ class Api:
                         index=pending.pop(future)
                         record=future.result()
                         if record is not None:
-                            records[index]=record;completed+=1
+                            if save_report:records[index]=record
+                            completed+=1
                             self._update(completed=completed)
                         submit_next()
-            if kind=='convert':
-                report=dest/('nifshift-report-'+time.strftime('%Y%m%d-%H%M%S')+'-'+uuid.uuid4().hex[:6]+'.json')
+            if save_report:
+                report=default_mesh_report(dest)
                 boundary.prepare_parent(report)
                 boundary.validate(report,must_be_absent=True)
                 with report.open('x',encoding='utf8') as stream:
@@ -283,6 +303,7 @@ class Api:
             self._log(self.state['message'],'error')
         finally:
             self._shutdown_worker()
+            self._batch_source_root=None
             with self._guard:
                 self._batch_elapsed=max(0.0,time.monotonic()-self._batch_started) if self._batch_started is not None else 0.0
                 self.busy=False
@@ -307,7 +328,7 @@ def main():
         webview.settings['ALLOW_FILE_URLS']=False
         webview.settings['ALLOW_DOWNLOADS']=False
         webview.settings['OPEN_EXTERNAL_LINKS_IN_BROWSER']=False
-        window=webview.create_window('Mesh Converter · ALPHA 1.0',ui_server.url,js_api=None,width=1060,height=940,resizable=False,background_color='#f8f7f2',hidden=smoke)
+        window=webview.create_window('Mesh Converter · 1.0',ui_server.url,js_api=None,width=1060,height=940,resizable=False,background_color='#f8f7f2',hidden=smoke)
         attach_bridge(window,api,ui_server.url,webview)
         api._window=window
         renderer_errors=[]
@@ -360,6 +381,10 @@ def main():
                     time.sleep(.05)
                 else:raise TimeoutError('Startup cover did not release the workspace')
                 window.evaluate_js("document.getElementById('ns-dialog-close').click()")
+                toggle="document.getElementById('ns-save-report')"
+                window.evaluate_js("if ("+toggle+".checked) "+toggle+".click()")
+                result['report_switch_off']=window.evaluate_js("!"+toggle+".checked && localStorage.getItem('mesh-save-report')==='false'")
+                assert result['report_switch_off'], 'Report choice was not saved'
                 for expected in ('ready','done'):
                     window.evaluate_js("window.dispatchEvent(new Event('focus'))")
                     desired='预扫描模型' if expected=='ready' else '开始转换'
@@ -373,7 +398,11 @@ def main():
                         if api.snapshot()['phase']==expected and not api.busy:break
                     else:raise TimeoutError('UI action did not reach '+expected+': '+str(api.snapshot()))
                     time.sleep(.7)
-                assert any(r['status']=='完成' for r in api.snapshot()['rows'])
+                finished=[r for r in api.snapshot()['rows'] if r['status']=='完成']
+                assert finished and all((root/'output'/r['output_relative']).is_file() for r in finished)
+                assert all(Path(r['output_relative']).parts[0].casefold()=='meshes' for r in finished)
+                assert not api.state['report'] and not (root/'output'/'reports').exists()
+                result['exported_files']=[r['output_relative'] for r in finished]
                 window.evaluate_js("document.querySelector('[data-panel=logs]').click();window.dispatchEvent(new Event('focus'))")
                 # The hidden smoke window intentionally defers log DOM work. It must
                 # still receive the log count through the real native bridge.

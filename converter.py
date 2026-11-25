@@ -5,7 +5,7 @@ from inspect_nif import Nif, Reader
 from publication_guard import OutputBoundary, absolute_path
 
 DIRECTIONS = {'76-to-4': (155,130), '4-to-76': (130,155)}
-BUILD = 'ALPHA 1.0 · common metadata 2026-10-14'
+BUILD = '1.0'
 
 
 def classify(n):
@@ -45,6 +45,11 @@ def convert_file(src, dest, direction='76-to-4', collision=True, dry_run=False,
         raise ValueError('目前仅支持无块组、根节点为 block 0 的 NIF')
     kind = classify(n)
     types = {n.types[t] for t in n.indices}
+    behavior_graphs = []
+    if 'BSBehaviorGraphExtraData' in types:
+        from convert_models import behavior_graph
+        behavior_graphs = list(dict.fromkeys(behavior_graph(n, n.blocks[i]) for i,t in enumerate(n.indices)
+                                             if n.types[t] == 'BSBehaviorGraphExtraData'))
     if direction == '4-to-76':
         from convert_reverse import convert
         kwargs = dict(collision=bool(collision), dry_run=bool(dry_run), reference_root=reference_root)
@@ -76,6 +81,16 @@ def convert_file(src, dest, direction='76-to-4', collision=True, dry_run=False,
         boundary.validate_source(src)
         boundary.validate(output, must_be_absent=True)
         result = convert(src,output,_nif=n,**kwargs)
+        if behavior_graphs:
+            result['external_behavior_graphs'] = [
+                dict(path=path, controls_base_skeleton=controls) for path,controls in behavior_graphs]
+            path = behavior_graphs[0][0]
+            display_path = ''.join(c if c.isprintable() else '?' for c in path[:180])
+            if len(path)>180 or len(behavior_graphs)>1:
+                display_path += '…'
+            result.setdefault('notes', []).append(
+                '播放需要目标游戏提供兼容的 HKX / Playback requires a compatible target-game HKX: '
+                + display_path)
         result.update(conversion_kind=kind, direction=direction,
                       source_bs=n.bs, target_bs=target, build=BUILD,
                       game_verified=False, dry_run=bool(dry_run))

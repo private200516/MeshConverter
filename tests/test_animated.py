@@ -74,6 +74,19 @@ class AnimationTests(unittest.TestCase):
                 convert(src, dst, collision=False)
             self.assertFalse(dst.exists())
 
+    def test_shared_shape_can_be_preserved_without_collision_expansion(self):
+        with tempfile.TemporaryDirectory() as td:
+            src, dst = Path(td) / 'source.nif', Path(td) / 'target.nif'
+            def shared_shape(w):
+                parent = w.add('NiNode', w.av('Second parent', IDENTITY) + P('Ii', 1, 7))
+                w.set(0, w.av('Animated', IDENTITY, collision=5, extra=[4], ctrl=1)
+                      + P('Iii', 2, 7, parent))
+            fixture(src, shared_shape)
+            with self.assertRaisesRegex(ValueError, '共享场景节点'):
+                convert(src, dst, collision=True)
+            self.assertFalse(dst.exists())
+            self.assertTrue(convert(src, dst, collision=False)['animation_keys_preserved'])
+
     def test_wrong_interpolator_reference_rejected(self):
         with tempfile.TemporaryDirectory() as td:
             src, dst = Path(td) / 'source.nif', Path(td) / 'target.nif'

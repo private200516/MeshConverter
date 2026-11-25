@@ -1,38 +1,51 @@
 {
-  "revision": "logo-refinement-release-20261117",
-  "public_version": "ALPHA 1.0",
-  "author": "private0516",
-  "date": "2026-11-17",
+  "revision": "v1.0",
+  "date": "2026-11-26",
+  "public_version": "1.0",
+  "regression_tests": 473,
   "passed": true,
-  "regression_tests": 399,
   "tests": {
     "MeshConverter": {
-      "tests": 122,
+      "tests": 143,
       "failures": 0,
       "errors": 0,
       "skipped": 0,
       "python": "3.12.14 (main, Aug 25 2026, 14:01:42) [MSC v.1944 64 bit (AMD64)]"
     },
     "TextureConverter": {
-      "tests": 277,
+      "tests": 330,
       "failures": 0,
       "errors": 0,
       "skipped": 0,
       "python": "3.12.14 (main, Aug 25 2026, 14:01:42) [MSC v.1944 64 bit (AMD64)]"
     }
   },
-  "launcher_tests_included_in_regression": 16,
-  "native_checks": {
-    "mesh_final_exe_webview2": true,
-    "mesh_startup_interrupt": true,
-    "texture_final_exe_with_test_entry_and_installed_qt_mainwindow": true,
-    "texture_windows_platform": true,
-    "texture_motion_screenshots": 19,
-    "texture_installed_exe_bgsm_bgem_cli": true,
-    "texture_preview_nested_job": true
+  "windows": {
+    "mesh_native_launcher": true,
+    "texture_native_ui": true,
+    "texture_installed_materials_cli": true,
+    "nested_preview_worker": true
   },
-  "logo_png_sha256": "31d8430db3b46afc4d30f1608935018eb7ef439021d8ff3c6a032c6201ddc35c",
-  "synthetic_fixtures_only": true,
+  "shared_export": {
+    "passed": true,
+    "reportless_resource_counts": {
+      "nif": 2,
+      "bgsm": 2,
+      "dds": 6
+    },
+    "triangles": [
+      244,
+      634
+    ],
+    "window_stable": true,
+    "native_fo4_nif": 130,
+    "bgsm_version": 2,
+    "reports_both_apps": true,
+    "preview_uses_export_only": true,
+    "preflight_no_saved_files": true,
+    "source_meshes_materials_unchanged": true,
+    "material_modes_both_orders": true
+  },
   "in_game_revalidated": false,
   "external_certification": false
 }

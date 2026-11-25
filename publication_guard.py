@@ -7,7 +7,10 @@ control; never claim this eliminates adversarial TOCTOU races.
 """
 import os
 import stat
-from pathlib import Path
+import time
+import uuid
+from collections import Counter
+from pathlib import Path, PureWindowsPath
 
 _REPARSE_POINT = getattr(stat, 'FILE_ATTRIBUTE_REPARSE_POINT', 0x400)
 _WINDOWS_RESERVED = {'CON', 'PRN', 'AUX', 'NUL', 'CONIN$', 'CONOUT$'} | {
@@ -29,6 +32,58 @@ def absolute_path(value):
                     or part.split('.')[0].rstrip(' ').upper() in _WINDOWS_RESERVED):
                 raise ValueError('Device names, alternate streams and ambiguous Windows paths are not supported')
     return path
+
+
+def mesh_source_root(source):
+    if source.is_dir():
+        return source
+    if source.suffix.lower() == '.nif' and source.is_file():
+        return source.parent
+    raise ValueError('请选择 NIF 文件或目录 / Select a NIF file or a folder')
+
+
+def mesh_library_root(directory):
+    ancestors = (*reversed(directory.parents), directory)
+    for parent in ancestors:
+        if parent.name.casefold() == 'meshes':
+            return parent
+    return None
+
+
+def mesh_export_boundary(output_root, source_root):
+    boundary = OutputBoundary(output_root, source_root)
+    library = mesh_library_root(source_root)
+    if library:
+        data = library.parent
+        reserved = (library, data / 'materials', data / 'textures')
+        if any(boundary.output_root.is_relative_to(folder) for folder in reserved):
+            raise ValueError('请选择源游戏资源树之外的输出目录 / Choose an output outside the source game asset folders')
+    return boundary
+
+
+def plan_mesh_paths(paths, source_root, output_root):
+    """Map approved sources into a mod layout before any parallel writes."""
+    existing_root = mesh_library_root(source_root)
+    prefix = Path() if output_root.name.casefold() == 'meshes' else Path('meshes')
+    targets = {}
+    for path in paths:
+        relative = path.relative_to(source_root)
+        if existing_root:
+            relative = path.relative_to(existing_root)
+        else:
+            for index, part in enumerate(relative.parts[:-1]):
+                if part.casefold() == 'meshes':
+                    relative = Path(*relative.parts[index + 1:])
+                    break
+        targets[path] = prefix / relative
+    # Fallout resolves asset names without case sensitivity, even if planning on POSIX.
+    counts = Counter(PureWindowsPath(target) for target in targets.values())
+    return {path: (target, counts[PureWindowsPath(target)] > 1) for path, target in targets.items()}
+
+
+def default_mesh_report(output_root):
+    name = 'mesh_' + time.strftime('%Y%m%d-%H%M%S') + '_' + uuid.uuid4().hex + '.json'
+    return output_root / 'reports' / name
 
 
 def _is_reparse(info):

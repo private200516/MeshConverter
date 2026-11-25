@@ -15,6 +15,8 @@ MAX_HEADER_BYTES = 64 * 1024 * 1024
 MAX_TABLE_ITEMS = 1_000_000
 MAX_BLOCK_TYPES = 4096
 MAX_STRING_BYTES = 1024 * 1024
+_NODE_SUFFIX_BYTES = {'NiNode': 0, 'BSFadeNode': 0, 'BSValueNode': 5, 'NiBillboardNode': 2, 'BSBlastNode': 3}
+NODE_TYPES = frozenset(_NODE_SUFFIX_BYTES)
 
 
 def read_nif_bytes(path):
@@ -147,15 +149,37 @@ class Nif:
         self.ref(d['collision'])
         d['avend']=r.p
         return d
+    def node_fields(self, r, typ):
+        """Read the children and exact subclass payload of a BS130/155 scene node."""
+        children = list(r.array('i', r.u()))
+        for child in children:
+            self.ref(child)
+        fields = dict(children=children, node_suffix_offset=r.p)
+        if len(r.b) - r.p != _NODE_SUFFIX_BYTES[typ]:
+            raise ValueError(f'Invalid {typ} node suffix size')
+        if typ == 'BSValueNode':
+            fields['value'], fields['value_flags'] = r.get('IB')
+        elif typ == 'NiBillboardNode':
+            mode = r.get('H')[0]
+            if mode not in (0, 1, 2, 3, 4, 5, 9):
+                raise ValueError(f'Unsupported NiBillboardNode facing mode: {mode}')
+            fields['billboard_mode'] = mode
+        elif typ == 'BSBlastNode':
+            fields['blast_range'] = r.get('3B')
+        return fields
+
     def inspect(self):
         out=[]
         for i,(t,b) in enumerate(zip(self.indices,self.blocks)):
             typ=self.types[t];r=Reader(b);d=dict(id=i,type=typ,size=len(b))
-            if typ in ('NiNode','BSValueNode','BSTriShape','BSSubIndexTriShape','BSMeshLODTriShape','BSFadeNode'):
+            if typ in NODE_TYPES or typ in ('BSTriShape','BSSubIndexTriShape','BSMeshLODTriShape'):
                 d.update(self.av(r))
-                if typ in ('NiNode','BSValueNode','BSFadeNode'):
-                    d['children']=list(r.array('i',r.u()))
-                    for child in d['children']: self.ref(child)
+                if typ in NODE_TYPES:
+                    if self.bs in (130,155):
+                        d.update(self.node_fields(r,typ))
+                    else:
+                        d['children']=list(r.array('i',r.u()))
+                        for child in d['children']:self.ref(child)
                 else:
                     d['bound']=r.get('4f');d['boundend']=r.p
                     if self.bs>=155: d['bbox']=r.get('6f')

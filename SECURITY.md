@@ -1,6 +1,12 @@
 # Security / 安全说明
 
-Revision: security-hardening-20261117 · ALPHA 1.0 · private0516
+Revision: v1.0 · Private0516
+
+校验 NIF 行为图路径和标志，共享碰撞节点及动画控制器链受检查。
+
+加强对特效着色器字段、节点布局和碰撞引用的结构校验，遇到不支持的数据会报告原因。
+
+共享导出沿用路径和重名保护，关闭报告时命令行不保留启动器转录。
 
 ## Scope / 范围
 
@@ -41,6 +47,6 @@ Python 运行时保留 3.12.14，其版本及来源会记录在 BUILD_PROVENANCE
 
 ## Reports / 问题报告
 
-报告时注明工具名称、ALPHA 1.0、上述 revision、操作步骤和预期/实际结果；优先提供不含游戏资源或私人路径的最小合成样本。日志、配置和转换报告可能包含本地路径，分享前请检查。不要把包含私人信息的文件直接贴到公开 issue。
+报告时注明工具名称、版本 1.0、上述 revision、操作步骤和预期/实际结果；优先提供不含游戏资源或私人路径的最小合成样本。日志、配置和转换报告可能包含本地路径，分享前请检查。不要把包含私人信息的文件直接贴到公开 issue。
 
 English: This revision bounds untrusted input and resource use, strengthens output publication, isolates preview failures, and improves launcher process/log handling. Processes still run as the current user, not in an OS security sandbox. The custom launchers remain unsigned and the bundled CPython remains 3.12.14. Verified download hashes detect changes relative to the published manifest but do not authenticate a replaced manifest. Source, pinned dependencies and third-party notices are provided for review; no safety certification is claimed.

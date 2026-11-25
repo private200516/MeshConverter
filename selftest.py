@@ -55,22 +55,23 @@ def run(root, fo4_root=None, fo76_root=None):
     assert api.start('convert')['ok']
     state=wait(api)
     assert state['phase']=='done' and state['status_counts'].get('完成')==5,state
-    for name in sources:assert Nif(out/name).validate()['bs']==130
-    assert 'bhkPhysicsSystem' in Nif(out/'墙壁.nif').types
-    assert 'BSSkin::Instance' in Nif(out/'body.nif').types
-    assert 'NiControllerManager' in Nif(out/'door.nif').types
-    assert Path(state['report']).is_file()
+    for name in sources:assert Nif(out/'meshes'/name).validate()['bs']==130
+    assert 'bhkPhysicsSystem' in Nif(out/'meshes'/'墙壁.nif').types
+    assert 'BSSkin::Instance' in Nif(out/'meshes'/'body.nif').types
+    assert 'NiControllerManager' in Nif(out/'meshes'/'door.nif').types
+    assert Path(state['report']).is_file() and Path(state['report']).parent==out/'reports'
     assert state['logs'] and not api.snapshot(state['logs'][-1]['id'])['logs']
-    digest=sha(out/'墙壁.nif')
+    digest=sha(out/'meshes'/'墙壁.nif')
     api.start('scan');wait(api);api.start('convert');wait(api)
-    assert sha(out/'墙壁.nif')==digest
+    assert sha(out/'meshes'/'墙壁.nif')==digest
     api.configure(str(source),str(root/'无碰撞'))
     api.start('scan');wait(api)
     assert api.start('convert',False).get('error')
-    api.start('scan',False);wait(api);api.start('convert',False)
+    api.start('scan',False);wait(api);api.start('convert',False,write_report=False)
     state=wait(api)
+    assert not state['report'] and not (root/'无碰撞'/'reports').exists()
     assert state['status_counts'].get('完成')==5,state
-    assert 'bhkPhysicsSystem' not in Nif(root/'无碰撞'/'墙壁.nif').types
+    assert 'bhkPhysicsSystem' not in Nif(root/'无碰撞'/'meshes'/'墙壁.nif').types
     reverse_input=root/'反向输入'
     reverse_input.mkdir()
     shutil.copyfile(reverse_source,reverse_input/'胸甲.nif')
@@ -81,7 +82,7 @@ def run(root, fo4_root=None, fo76_root=None):
     assert state['status_counts'].get('可转换')==1,state
     api.start('convert',False);state=wait(api)
     assert state['status_counts'].get('完成')==1,state
-    assert Nif(root/'反向输出'/'胸甲.nif').validate()['bs']==155
+    assert Nif(root/'反向输出'/'meshes'/'胸甲.nif').validate()['bs']==155
     api.configure(str(source),str(root/'取消'))
     api.start('scan');api.cancel();state=wait(api)
     assert state['phase']=='idle' and api._process is None,state

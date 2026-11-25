@@ -4,7 +4,7 @@ GPL-3.0. Animation layout reference: niftools/nifxml.
 """
 import struct,hashlib,math
 from pathlib import Path
-from inspect_nif import Nif,Reader,MAX_TABLE_ITEMS
+from inspect_nif import Nif,Reader,MAX_TABLE_ITEMS,NODE_TYPES as NODES
 from convert_models import Writer,P,sized,LIGHT,COMMON_EXTRA_TYPES,validate_extra,material_path
 from convert_preserved import shape,effect,finite,ref
 from havok.bhk_autopack import pack_shapes
@@ -14,7 +14,6 @@ from shader_animation import (SCALAR_CONTROLLERS, INTERPOLATORS, EXTRA_ANIM,
  convert_controller_block, convert_animation_block, validate_sequence_binding, animation_semantics)
 CONTROLLERS={'NiControllerManager','NiMultiTargetTransformController','NiTransformController'}|SCALAR_CONTROLLERS
 ANIM=CONTROLLERS|EXTRA_ANIM|{'NiControllerSequence','NiTransformInterpolator','NiTransformData','NiTextKeyExtraData','NiDefaultAVObjectPalette'}
-NODES={'NiNode','BSFadeNode','BSValueNode'}
 SHAPES={'BSTriShape','BSSubIndexTriShape'}
 EXTRAS=COMMON_EXTRA_TYPES
 ALLOWED=ANIM|NODES|SHAPES|EXTRAS|{'BSLightingShaderProperty','BSShaderTextureSet','BSEffectShaderProperty','NiAlphaProperty','bhkNPCollisionObject','bhkPhysicsSystem'}
@@ -102,11 +101,13 @@ def validate_animation(n):
    ref(n,r.i(),NODES|SHAPES,'对象调色板根',True)
    for _ in range(_count(r,8)):r.s();ref(n,r.i(),NODES|SHAPES,'对象调色板目标')
   _done(r,typ);reports.append(report)
+ verified=set()
  for first in chains:
   seen=set();current=first
-  while current!=-1:
+  while current!=-1 and current not in verified:
    if current in seen:raise ValueError('控制器链包含循环引用')
    seen.add(current);current=chains[current]
+  verified.update(seen)
  validate_interpolator_links(reports)
  if not chains:raise ValueError('缺少受支持的动画控制器')
  return reports,targets
@@ -120,10 +121,8 @@ def _scene(n):
    ref(n,d['ctrl'],CONTROLLERS,'节点控制器',True);ref(n,d['collision'],{'bhkNPCollisionObject'},'节点碰撞',True)
    for extra in d['extra']:ref(n,extra,EXTRAS|{'NiTextKeyExtraData'},'扩展数据')
    if typ in NODES:
-    d['children']=list(r.array('i',r.u()))
+    d.update(n.node_fields(r,typ))
     for child in d['children']:ref(n,child,NODES|SHAPES,'子节点',True)
-    if typ=='BSValueNode':r.get('IB')
-    _done(r,typ)
    else:
     if d['skin']!=-1:raise ValueError('此流程不处理蒙皮与节点动画组合')
     ref(n,d['shader'],{'BSLightingShaderProperty','BSEffectShaderProperty'},'网格着色器');ref(n,d['alpha'],{'NiAlphaProperty'},'透明属性',True)
@@ -212,9 +211,12 @@ def convert(src,dest,collision=True,dry_run=False,_nif=None):
   verts=[];faces=[]
   def transform(v,tf):
    return tuple(tf[j]+tf[12]*sum(tf[3+j*3+k]*v[k] for k in range(3)) for j in range(3))
-  def visit(idx,chain,visited):
-   if idx in visited:raise ValueError('循环节点引用')
-   d=ds[idx];visited=visited|{idx}
+  visited=set()
+  def visit(idx,chain):
+   # A single local collision mesh cannot safely expand shared subtrees.
+   if idx in visited:raise ValueError('动画碰撞不支持共享场景节点；可选择仅转换模型')
+   visited.add(idx);d=ds[idx]
+   if d['type']=='NiBillboardNode' and d['children']:raise ValueError('朝向相机的子树无法生成固定碰撞；可选择仅转换模型')
    if idx!=node:chain=[d['transform']]+chain
    if d['type'] in SHAPES:
     vs,ts=_geometry(n,d);offset=len(verts)
@@ -224,8 +226,8 @@ def convert(src,dest,collision=True,dry_run=False,_nif=None):
     faces.extend(tuple(k+offset for k in t) for t in ts)
    else:
     for child in d.get('children',[]):
-     if child!=-1:visit(child,chain,visited)
-  visit(node,[],set())
+     if child!=-1:visit(child,chain)
+  visit(node,[])
   if not faces:raise ValueError('动画碰撞节点没有可见网格')
   return verts,faces
  body_reports=[]
@@ -256,7 +258,13 @@ def convert(src,dest,collision=True,dry_run=False,_nif=None):
    if out.blocks[i]!=(convert_animation_block(n,i,130,w) if n.types[t] in ANIM else n.blocks[i]):raise ValueError('动画或节点引用发生改变')
  out_animation,_=validate_animation(out)
  if animation_semantics(out_animation)!=animation_semantics(animation):raise ValueError('动画语义回读失败')
- _scene(out)
+ target_scene=_scene(out)
+ for i,d in ds.items():
+  if d['type'] in NODES:
+   target=target_scene[i]
+   if (target['type']!=d['type'] or target['children']!=d['children'] or
+       out.blocks[i][target['node_suffix_offset']:]!=n.blocks[i][d['node_suffix_offset']:]):
+    raise ValueError('动画场景节点类型、子节点或附加字段发生改变')
  for i,d in shapes:
   od=shape(out,i)
   if out.blocks[i][od['dataoffset']:]!=n.blocks[i][d['dataoffset']:]:raise ValueError('几何数据改变')

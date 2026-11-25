@@ -10,14 +10,13 @@ import math
 import struct
 from pathlib import Path
 
-from inspect_nif import Nif, Reader
+from inspect_nif import Nif, Reader, NODE_TYPES as NODES
 from convert_models import Writer, P, sized, COMMON_EXTRA_TYPES, validate_extra
 from convert_preserved import shape, skin_instance, validate_weights, ref
 from convert_animated import CONTROLLERS, ANIM, validate_animation
 from skin_reference import match_skeleton
 from shader_animation import SCALAR_CONTROLLERS, convert_controller_block, convert_animation_block, animation_semantics
 
-NODES = {'NiNode', 'BSFadeNode', 'BSValueNode'}
 SHAPES = {'BSTriShape', 'BSSubIndexTriShape'}
 ANIMATION = ANIM
 
@@ -132,13 +131,9 @@ def validate_metadata(n):
             for extra in d['extra']:
                 ref(n, extra, COMMON_EXTRA_TYPES | {'NiTextKeyExtraData'}, '节点扩展数据')
             if typ in NODES:
-                d['children'] = list(r.array('i', r.u()))
+                d.update(n.node_fields(r,typ))
                 for child in d['children']:
                     ref(n, child, NODES | SHAPES, '子节点', True)
-                if typ == 'BSValueNode':
-                    r.get('IB')
-                if r.p != len(block):
-                    raise ValueError(typ + ' 含未解析的尾部字段')
             descriptors[i] = d
         elif typ in COMMON_EXTRA_TYPES:
             validate_extra(n, typ, block)

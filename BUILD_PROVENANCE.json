@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "product": "MeshConverter",
-  "public_version": "ALPHA 1.0",
-  "revision": "logo-refinement-release-20261117",
+  "public_version": "1.0",
+  "revision": "v1.0",
   "logo": {
     "source": "assets/toolkit-logo.png",
     "png_sha256": "31d8430db3b46afc4d30f1608935018eb7ef439021d8ff3c6a032c6201ddc35c",
@@ -10,7 +10,7 @@
     "png_bytes_unchanged": true,
     "icon_sha256": "1ed911cbd79280f2251d2f1db39034cd16b7701573551367c23e99cf14a0c782"
   },
-  "author": "private0516",
+  "author": "Private0516",
   "project_license": "GPL-3.0",
   "development_disclosure": "GPT-6 Astra; AI-generated code and UI",
   "python": {
@@ -22,9 +22,9 @@
   },
   "launcher": {
     "source": "Launcher.cs",
-    "source_sha256": "2153ca551524f2e70cd4baaa06a8e8cb9e4846e36d69e5ae6f50599188fdd837",
+    "source_sha256": "b17f244a6042c4d1feef4db215188efca12b538360f0473fb1357ea55719edff",
     "manifest_sha256": "896cc4ccff58a18e312d545ee9b2bb4a3da09cb5c0dfc96d5a1376628f55e26b",
-    "exe_sha256": "a13b1432d86b00654f4e4cbdfdd04b8f53dcba20dfe34a0867bc7454e36155cb",
+    "exe_sha256": "09df0c2ae66dc78185bae610249e35678f86451805726a7c2d201470bd0fd7de",
     "compiler": "Windows .NET Framework v4 x64 C# compiler",
     "compiler_sha256": "eca02e6b15cde93009a59a3d129d5a77fb5008f2e1cf62cf573b6737c747ecc3",
     "build_script": "tools/build_launcher.ps1",
@@ -57,5 +57,19 @@
         "patched_sha256": "96551b7d64d223faed8430c623d269a33f293545976c0f973f8f9927bc38d862"
       }
     ]
+  },
+  "local_application_changes": {
+    "app.py": "f57cd1a4fd5b67c351db500be656b9436f75d9f938f10078d60b28db4584afc3",
+    "batch_nif.py": "a17fd598a68c47750eb9d2b1148e4557da40047779385f77406f270d166dae26",
+    "convert_animated.py": "ef8dba2c8b333aa3594715c75c4414ba990c1368b34109f4f4699fc89f679156",
+    "convert_models.py": "02a29e94fcf3dd705243131d7d4bb692b0c6c7d7a4c215f5e4432d446bb283be",
+    "convert_preserved.py": "9471804484dda42921ce39ed3bc3b14dbd46a11f027b3a23066d170551381042",
+    "convert_reverse.py": "545f3485722d43a9e37949e8b68c41afc4e9a2362eaee37ec4cf4c1bef84e71f",
+    "converter.py": "d6498ba338876c10c163cedf6647b8a61aab7f43228060f4fb3f703f225dfd4d",
+    "inspect_nif.py": "d694a2780c6705c2acc824193f8d191eba4c5495d9dad4d40b7131f8b8d1306b",
+    "publication_guard.py": "2557382ce3d0b4507a304111b3ec9b166c1b628b83dddd8126afee29a32dd136",
+    "selftest.py": "154bfdab111fbc23672e35a3d3b4c8ae4519c556eff2dfd420a03399ed61b570",
+    "trusted_ui.py": "5b5b95fce967f540b4d4a787f2d78dadfa200dc23d30c66a004376d3cfa733ab",
+    "ui.html": "bcc0bf941fdca682905f405128cec3f72de89e665496e64c99df82d3efb32755"
   }
 }
